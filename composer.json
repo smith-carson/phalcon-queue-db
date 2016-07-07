@@ -1,20 +1,23 @@
 {
-    "name": "igorsantos07/phalcon-queue-db",
-    "description": "Phalcon queuing interface for database storage",
-    "type": "library",
-    "require": {
-
-    },
-    "require-dev": {
-        "phalcon/devtools": "^2.0.11",
-        "codeception/codeception": "^2.2"
-    },
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Igor Santos",
-            "email": "igorsantos07@gmail.com"
-        }
-    ],
-    "minimum-stability": "dev"
+  "name": "igorsantos07/phalcon-queue-db",
+  "description": "Phalcon queuing interface for database storage",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Igor Santos",
+      "email": "igorsantos07@gmail.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Phalcon\\Queue\\": "src/"
+    }
+  },
+  "minimum-stability": "dev",
+  "require": {},
+  "require-dev": {
+    "phalcon/devtools": "^2.0.11",
+    "codeception/codeception": "^2.2"
+  }
 }

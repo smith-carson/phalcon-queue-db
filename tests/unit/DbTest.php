@@ -3,7 +3,6 @@ use Phalcon\Queue\Db;
 
 class DbTest extends \Codeception\TestCase\Test
 {
-
     const TUBE_JSON   = 'json';
     const TUBE_ARRAY  = 'array';
     const TUBE_STRING = 'default';
@@ -39,7 +38,9 @@ class DbTest extends \Codeception\TestCase\Test
         }
     }
 
-    protected function _after() { }
+    protected function _after()
+    {
+    }
 
     public function testInstance()
     {
@@ -60,5 +61,4 @@ class DbTest extends \Codeception\TestCase\Test
         sort($correct_tubes);
         $this->tester->assertEquals($correct_tubes, $tubes, 'not all tubes were found');
     }
-    
 }

@@ -1,4 +1,5 @@
 <?php namespace Phalcon\Queue;
+
 use Phalcon\Db\Adapter\Pdo\Sqlite;
 use Phalcon\Di\Injectable;
 use Phalcon\Queue\Db\Model as JobModel;
@@ -33,7 +34,9 @@ class Db extends Injectable
      *
      * @return resource
      */
-    public function connect() { }
+    public function connect()
+    {
+    }
 
     /**
      * Inserts jobs into the queue
@@ -42,7 +45,8 @@ class Db extends Injectable
      * @param array $options
      * @return string|bool
      */
-    public function put($data, $options = []) {
+    public function put($data, $options = [])
+    {
         $payload = array_merge($options, ['body' => serialize($data)]);
         $job = new JobModel();
         $job->save($payload);
@@ -55,7 +59,9 @@ class Db extends Injectable
      * @param mixed $timeout
      * @return bool|\Phalcon\Queue\Beanstalk\Job
      */
-    public function reserve($timeout = null) { }
+    public function reserve($timeout = null)
+    {
+    }
 
     /**
      * Change the active tube. By default the tube is "default"
@@ -63,7 +69,9 @@ class Db extends Injectable
      * @param string $tube
      * @return bool|string
      */
-    public function choose($tube) { }
+    public function choose($tube)
+    {
+    }
 
     /**
      * Change the active tube. By default the tube is "default"
@@ -71,14 +79,18 @@ class Db extends Injectable
      * @param string $tube
      * @return bool|string
      */
-    public function watch($tube) { }
+    public function watch($tube)
+    {
+    }
 
     /**
      * Get stats of the Beanstalk server.
      *
      * @return bool|array
      */
-    public function stats() { }
+    public function stats()
+    {
+    }
 
     /**
      * Get stats of a tube.
@@ -86,14 +98,17 @@ class Db extends Injectable
      * @param string $tube
      * @return bool|array
      */
-    public function statsTube($tube) { }
+    public function statsTube($tube)
+    {
+    }
 
     /**
      * Get list of a tubes.
      *
      * @return bool|array
      */
-    public function listTubes() {
+    public function listTubes()
+    {
         $result = JobModel::query()
             ->distinct(true)
             ->columns('tube')
@@ -108,21 +123,27 @@ class Db extends Injectable
      *
      * @return bool|\Phalcon\Queue\Beanstalk\Job
      */
-    public function peekReady() { }
+    public function peekReady()
+    {
+    }
 
     /**
      * Return the next job in the list of buried jobs
      *
      * @return bool|\Phalcon\Queue\Beanstalk\Job
      */
-    public function peekBuried() { }
+    public function peekBuried()
+    {
+    }
 
     /**
      * Reads the latest status from the Beanstalkd server
      *
      * @return array
      */
-    final public function readStatus() { }
+    final public function readStatus()
+    {
+    }
 
     /**
      * Fetch a YAML payload from the Beanstalkd server
@@ -138,7 +159,9 @@ class Db extends Injectable
      * @param int $length
      * @return bool|string
      */
-    public function read($length = 0) { }
+    public function read($length = 0)
+    {
+    }
 
     /**
      * Writes data to the socket. Performs a connection if none is available
@@ -146,13 +169,16 @@ class Db extends Injectable
      * @param string $data
      * @return bool|int
      */
-    protected function write($data) { }
+    protected function write($data)
+    {
+    }
 
     /**
      * Closes the connection to the beanstalk server.
      *
      * @return bool
      */
-    public function disconnect() { }
-
+    public function disconnect()
+    {
+    }
 }

@@ -1,0 +1,70 @@
+preset: psr2
+risky: true
+linting: true
+
+enabled:
+  - align_double_arrow
+  - align_equals
+  - binary_operator_spaces
+  - blank_line_before_return
+  - cast_spaces
+  - concat_without_spaces
+  - dir_constant
+  - function_typehint_space
+  - hash_to_slash_comment
+  - heredoc_to_nowdoc
+  - include
+  - lowercase_cast
+  - method_separation
+  - modernize_types_casting
+  - native_function_casing
+  - new_with_braces
+  - no_blank_lines_after_phpdoc
+  - no_blank_lines_before_namespace
+  - no_empty_statement
+  - no_leading_namespace_whitespace
+  - no_multiline_whitespace_around_double_arrow
+  - no_multiline_whitespace_before_semicolons
+  - no_php4_constructor
+  - no_short_bool_cast
+  - no_singleline_whitespace_before_semicolons
+  - no_spaces_inside_offset
+  - no_trailing_comma_in_list_call
+  - no_trailing_comma_in_singleline_array
+  - no_unreachable_default_argument_value
+  - no_unused_imports
+  - no_whitespace_before_comma_in_array
+  - no_whitespace_in_blank_lines
+  - normalize_index_brace
+  - object_operator_without_whitespace
+  - ordered_imports
+  - php_unit_construct
+  - php_unit_dedicate_assert
+  - phpdoc_align
+  - phpdoc_indent
+  - phpdoc_no_access
+  - phpdoc_no_package
+  - phpdoc_order
+  - phpdoc_property
+  - phpdoc_scalar
+  - phpdoc_single_line_var_spacing
+  - phpdoc_summary
+  - phpdoc_type_to_var
+  - pre_increment
+  - print_to_echo
+  - random_api_migration
+  - self_accessor
+  - short_array_syntax
+  - short_scalar_cast
+  - single_quote
+  - space_after_semicolon
+  - standardize_not_equals
+  - ternary_operator_spaces
+  - trailing_comma_in_multiline_array
+  - trim_array_spaces
+  - unary_operator_spaces
+  - whitespace_after_comma_in_array
+
+finder:
+  exclude:
+    - "tests/_support/_generated"

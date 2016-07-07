@@ -1,0 +1,22 @@
+language: php
+php:
+  - '5.5'
+  - '5.6'
+#  - '7.0' # not yet supported by Phalcon
+
+#  Those cached folders might interfere when dependencies or Phalcon are updated
+cache:
+  directories:
+    - vendor
+    - $HOME/.composer/cache
+
+install:
+  - '[[ "$TRAVIS_PHP_VERSION" == "7.0" ]] || git clone -q --depth=1 https://github.com/phalcon/cphalcon.git'
+  - '[[ "$TRAVIS_PHP_VERSION" == "7.0" ]] || (cd cphalcon/ext; export CFLAGS="-g0 -O0 -std=gnu90"; phpize &> /dev/null && ./configure --silent --enable-phalcon &> /dev/null && make --silent -j2 &> /dev/null && make --silent install && phpenv config-add ../unit-tests/ci/phalcon.ini &> /dev/null && cd ../..;)'
+  - '[[ "$TRAVIS_PHP_VERSION" == "7.0" ]] || git clone -q --depth=1 -b 2.2 https://github.com/Codeception/phalcon-demo.git frameworks-phalcon'
+  - '[[ "$TRAVIS_PHP_VERSION" == "7.0" ]] || composer update -d frameworks-phalcon $composer_parameters'
+  - composer self-update && composer --version
+  - composer update -n --prefer-dist
+
+script:
+  - composer exec "codecept run --debug"

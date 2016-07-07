@@ -17,6 +17,8 @@ class Model extends \Phalcon\Mvc\Model
 
     public $priority = 0;
 
-    public function getSource() { return 'jobs'; }
-
+    public function getSource()
+    {
+        return 'jobs';
+    }
 }

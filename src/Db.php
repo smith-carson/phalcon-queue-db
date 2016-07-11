@@ -19,6 +19,20 @@ class Db extends Injectable
     /** @var \Phalcon\Db\Adapter\Pdo */
     protected $connection;
 
+    /** Time to run (aka timeout) */
+    const OPT_TTR      = 'ttr';
+    /** How long to wait before this job becomes available */
+    const OPT_DELAY    = 'delay';
+    const OPT_PRIORITY = 'priority'; //TODO: test me under JobTest
+    const OPT_TUBE     = 'tube';
+    
+    const OPTIONS = [
+        self::OPT_DELAY,
+        self::OPT_TTR,
+        self::OPT_PRIORITY,
+        self::OPT_TUBE
+    ];
+
     /**
      * Queue manager constructor. By default, will look for a service called 'db'.
      * @todo implement some way to force a persistent db connection
@@ -27,15 +41,6 @@ class Db extends Injectable
     public function __construct($di_service_key = 'db')
     {
         $this->connection = $this->getDI()->get($di_service_key);
-    }
-
-    /**
-     * Makes a connection to the Beanstalkd server
-     *
-     * @return resource
-     */
-    public function connect()
-    {
     }
 
     /**
@@ -98,7 +103,7 @@ class Db extends Injectable
      * @param string $tube
      * @return bool|array
      */
-    public function statsTube($tube)
+    public function statsTube($tube = 'default')
     {
     }
 
@@ -133,52 +138,6 @@ class Db extends Injectable
      * @return bool|\Phalcon\Queue\Beanstalk\Job
      */
     public function peekBuried()
-    {
-    }
-
-    /**
-     * Reads the latest status from the Beanstalkd server
-     *
-     * @return array
-     */
-    final public function readStatus()
-    {
-    }
-
-    /**
-     * Fetch a YAML payload from the Beanstalkd server
-     *
-     * @return array
-     */
-//    final public function readYaml() {}
-
-    /**
-     * Reads a packet from the socket. Prior to reading from the socket will
-     * check for availability of the connection.
-     *
-     * @param int $length
-     * @return bool|string
-     */
-    public function read($length = 0)
-    {
-    }
-
-    /**
-     * Writes data to the socket. Performs a connection if none is available
-     *
-     * @param string $data
-     * @return bool|int
-     */
-    protected function write($data)
-    {
-    }
-
-    /**
-     * Closes the connection to the beanstalk server.
-     *
-     * @return bool
-     */
-    public function disconnect()
     {
     }
 }

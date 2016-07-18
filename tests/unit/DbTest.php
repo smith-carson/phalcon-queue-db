@@ -64,11 +64,11 @@ class DbTest extends \Codeception\TestCase\Test
         $stats = $this->queue->stats();
         $this->assertEquals([
             'all' => [
-                'active'   => 5,
+                'active'   => 6,
                 'buried'   => 1,
                 'delayed'  => 1,
                 'reserved' => 1,
-                'total'    => 8,
+                'total'    => 9,
             ],
             'array' => [
                 'active'   => 1,
@@ -78,11 +78,11 @@ class DbTest extends \Codeception\TestCase\Test
                 'total'    => 1,
             ],
             'default' => [
-                'active'   => 2,
+                'active'   => 3,
                 'buried'   => 1,
                 'delayed'  => 1,
                 'reserved' => 1,
-                'total'    => 5,
+                'total'    => 6,
             ],
             'int' => [
                 'active'   => 1,
@@ -98,6 +98,18 @@ class DbTest extends \Codeception\TestCase\Test
                 'reserved' => 0,
                 'total'    => 1,
             ],
+        ], $stats);
+    }
+
+    public function testStatsTube()
+    {
+        $stats = $this->queue->statsTube('default');
+        $this->assertEquals([
+            'active'   => 3,
+            'buried'   => 1,
+            'delayed'  => 1,
+            'reserved' => 1,
+            'total'    => 6
         ], $stats);
     }
 
@@ -119,17 +131,6 @@ class DbTest extends \Codeception\TestCase\Test
         $array = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
         $this->assertAttributeEquals('int', 'tube', $job);
-    }
-
-    public function testStatsTube()
-    {
-        $stats = $this->queue->statsTube('default');
-        $this->assertEquals([
-            'active'   => 2,
-            'buried'   => 1,
-            'delayed'  => 1,
-            'reserved' => 1,
-        ], $stats);
     }
 
     public function testReserve()

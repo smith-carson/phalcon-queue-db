@@ -1,10 +1,11 @@
 <?php namespace Phalcon\Queue;
 
-use Phalcon\Db\Adapter\Pdo\Sqlite;
-use Phalcon\Di\Injectable;
+use Phalcon\Di;
+use BadMethodCallException as BadMethod;
+use Phalcon\Queue\Db\Job;
 use Phalcon\Queue\Db\Model as JobModel;
 
-require_once __DIR__.'/../tests/unit/DbTest.php';
+require_once __DIR__ . '/../tests/unit/DbTest.php';
 
 /**
  * Tries to mimic Phalcon's Beanstalk Queue class for low-throughput queue needs
@@ -13,7 +14,7 @@ require_once __DIR__.'/../tests/unit/DbTest.php';
  * $queue = new \Phalcon\Queue\Db();
  * </code>
  */
-class Db extends Injectable
+class Db extends Beanstalk
 {
 
     /** @var \Phalcon\Db\Adapter\Pdo */
@@ -30,7 +31,7 @@ class Db extends Injectable
         self::OPT_DELAY,
         self::OPT_TTR,
         self::OPT_PRIORITY,
-        self::OPT_TUBE
+        self::OPT_TUBE,
     ];
 
     /**
@@ -40,12 +41,11 @@ class Db extends Injectable
      */
     public function __construct($di_service_key = 'db')
     {
-        $this->connection = $this->getDI()->get($di_service_key);
+        $this->connection = Di::getDefault()->get($di_service_key);
     }
 
     /**
      * Inserts jobs into the queue
-     *
      * @param mixed $data
      * @param array $options
      * @return string|bool
@@ -53,16 +53,16 @@ class Db extends Injectable
     public function put($data, $options = [])
     {
         $payload = array_merge($options, ['body' => serialize($data)]);
-        $job = new JobModel();
+        $job     = new JobModel();
         $job->save($payload);
+
         return $job->id;
     }
 
     /**
      * Reserves a job in the queue
-     *
      * @param mixed $timeout
-     * @return bool|\Phalcon\Queue\Beanstalk\Job
+     * @return bool|\Phalcon\Queue\Db\Job
      */
     public function reserve($timeout = null)
     {
@@ -70,7 +70,6 @@ class Db extends Injectable
 
     /**
      * Change the active tube. By default the tube is "default"
-     *
      * @param string $tube
      * @return bool|string
      */
@@ -90,22 +89,35 @@ class Db extends Injectable
 
     /**
      * Get stats of the open tubes.
-     *
-     * @return bool|array
+     * Each entry (keyed by tube) contains the following keys, pointing to the number of corresponding jobs on the
+     * table:
+     *   - active (waiting for being worked on)
+     *   - buried (failed)
+     *   - delayed (going to be ready for work only later)
+     *   - reserved (being worked on)
+     *   - total (sum of all)
+     * @param string $filterTube Return only data regarding a given tube
+     * @return array[]
      */
-    public function stats()
+    public function stats($filterTube = null)
     {
-        $result = JobModel::query()
+        $query = JobModel::query()
             ->columns([
                 'tube',
                 'COUNT(*) AS total',
                 'buried',
                 'reserved',
-                'delay <> 0 AS delayed'
+                'delay >= :timestamp: AS delayed',
             ])
-            ->groupBy(['tube','buried','reserved','delayed'])
-            ->orderBy('tube')
-            ->execute();
+            ->bind(['timestamp' => time()])
+            ->groupBy(['tube', 'buried', 'reserved', 'delayed'])
+            ->orderBy('tube');
+
+        if ($filterTube) {
+            $query->where('tube = :tube:', ['tube' => $filterTube]);
+        }
+
+        $result = $query->execute();
 
         $structure = [
             'active'   => 0,
@@ -114,7 +126,7 @@ class Db extends Injectable
             'reserved' => 0,
             'total'    => 0,
         ];
-        $stats = ['all' => $structure];
+        $stats     = (!$filterTube) ? ['all' => $structure] : [];
         foreach ($result->toArray() as $entry) {
             $tube  = $entry['tube'];
             $total = $entry['total'];
@@ -124,30 +136,37 @@ class Db extends Injectable
                 $stats[$tube] = $structure;
             }
 
-            $entry = array_filter($entry); //leaves only the status with a value
-            $status = $entry? array_keys($entry)[0] : 'active'; //if there's no key, it's the count for active jobs
+            $entry  = array_filter($entry); //leaves only the status that has a value
+            $status = $entry ? array_keys($entry)[0] : 'active'; //if there's no key, it's the count for active jobs
             $stats[$tube][$status] += $total;
-            $stats['all'][$status] += $total;
             $stats[$tube]['total'] += $total;
-            $stats['all']['total'] += $total;
+            if (!$filterTube) {
+                $stats['all'][$status] += $total;
+                $stats['all']['total'] += $total;
+            }
         }
 
-        return $stats;
+        return $filterTube ? current($stats) : $stats;
     }
 
     /**
-     * Get stats of a tube.
-     *
+     * Get stats of a tube. By default, gets from the currently active tube.
+     * Returns an array with the following keys:
+     *   - active (waiting for being worked on)
+     *   - buried (failed)
+     *   - delayed (going to be ready for work only later)
+     *   - reserved (being worked on)
+     *   - total (sum of all)
      * @param string $tube
-     * @return bool|array
+     * @return array
      */
-    public function statsTube($tube = 'default')
+    public function statsTube($tube = null)
     {
+        return $this->stats($tube?: $this->activeTube);
     }
 
     /**
      * Get list of a tubes.
-     *
      * @return bool|array
      */
     public function listTubes()
@@ -158,24 +177,42 @@ class Db extends Injectable
             ->orderBy('tube')
             ->execute()
             ->toArray();
+
         return array_column($result, 'tube');
     }
 
     /**
      * Inspect the next ready job.
-     *
-     * @return bool|\Phalcon\Queue\Beanstalk\Job
+     * @return bool|\Phalcon\Queue\Db\Job
      */
     public function peekReady()
     {
+        $job = JobModel::findFirst([
+            'conditions' => 'tube = :tube: AND delay < :timestamp:',
+            'order'      => 'id ASC',
+            'bind'       => [
+                'tube'      => $this->activeTube,
+                'timestamp' => time()
+            ],
+        ]);
+
+        if ($job) {
+            return Job::fromModel($this, $job);
+        } else {
+            return false;
+        }
     }
 
     /**
      * Return the next job in the list of buried jobs
-     *
-     * @return bool|\Phalcon\Queue\Beanstalk\Job
+     * @return bool|\Phalcon\Queue\Db\Job
      */
     public function peekBuried()
     {
     }
+
+    public function connect() { throw new BadMethod('"connect" is not a valid method in DB queues.'); }
+    public function read($length = 0) { throw new BadMethod('"read" is not a valid method in DB queues.'); }
+    protected function write($data) { throw new BadMethod('"write" is not a valid method in DB queues.'); }
+    public function disconnect() { throw new BadMethod('"disconnect" is not a valid method in DB queues.'); }
 }

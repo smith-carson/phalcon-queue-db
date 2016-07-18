@@ -14,7 +14,7 @@
       "Phalcon\\Queue\\": "src/"
     }
   },
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "require": {},
   "require-dev": {
     "phalcon/devtools": "^2.0.11",

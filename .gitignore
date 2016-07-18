@@ -4,4 +4,5 @@ tests/_output/*
 
 # it seems there's a bug on Codeception blocking proper in-memory database usage
 # see https://github.com/Codeception/Codeception/issues/3319
-:memory:*
+tests/_data/base.db
+/tests/_data/base.db_snapshot

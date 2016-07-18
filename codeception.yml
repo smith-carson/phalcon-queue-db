@@ -15,7 +15,7 @@ extensions:
 modules:
     config:
         Db:
-            dsn: 'sqlite::memory:'
+            dsn: 'sqlite:tests/_data/base.db'
             user: null
             password: null
             populate: true

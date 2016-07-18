@@ -39,10 +39,6 @@ class DbTest extends \Codeception\TestCase\Test
         }
     }
 
-    protected function _after()
-    {
-    }
-
     public function testInstance()
     {
         $this->tester->assertInstanceOf(Db::class, $this->queue);

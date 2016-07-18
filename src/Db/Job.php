@@ -31,7 +31,7 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
         if (method_exists($this, $getter)) {
             return $this->$getter();
         } else {
-            throw new \BadMethodCallException()
+            throw new \BadMethodCallException();
         }
     }
 

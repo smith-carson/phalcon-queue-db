@@ -25,7 +25,7 @@ class Db extends Injectable
     const OPT_DELAY    = 'delay';
     const OPT_PRIORITY = 'priority'; //TODO: test me under JobTest
     const OPT_TUBE     = 'tube';
-    
+
     const OPTIONS = [
         self::OPT_DELAY,
         self::OPT_TTR,
@@ -89,12 +89,50 @@ class Db extends Injectable
     }
 
     /**
-     * Get stats of the Beanstalk server.
+     * Get stats of the open tubes.
      *
      * @return bool|array
      */
     public function stats()
     {
+        $result = JobModel::query()
+            ->columns([
+                'tube',
+                'COUNT(*) AS total',
+                'buried',
+                'reserved',
+                'delay <> 0 AS delayed'
+            ])
+            ->groupBy(['tube','buried','reserved','delayed'])
+            ->orderBy('tube')
+            ->execute();
+
+        $structure = [
+            'active'   => 0,
+            'buried'   => 0,
+            'delayed'  => 0,
+            'reserved' => 0,
+            'total'    => 0,
+        ];
+        $stats = ['all' => $structure];
+        foreach ($result->toArray() as $entry) {
+            $tube  = $entry['tube'];
+            $total = $entry['total'];
+            unset($entry['total'], $entry['tube']);
+
+            if (!array_key_exists($tube, $stats)) {
+                $stats[$tube] = $structure;
+            }
+
+            $entry = array_filter($entry); //leaves only the status with a value
+            $status = $entry? array_keys($entry)[0] : 'active'; //if there's no key, it's the count for active jobs
+            $stats[$tube][$status] += $total;
+            $stats['all'][$status] += $total;
+            $stats[$tube]['total'] += $total;
+            $stats['all']['total'] += $total;
+        }
+
+        return $stats;
     }
 
     /**

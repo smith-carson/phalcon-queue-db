@@ -17,6 +17,10 @@ class Model extends \Phalcon\Mvc\Model
 
     public $priority = 0;
 
+    public $reserved = 0;
+
+    public $buried = 0;
+
     public function getSource()
     {
         return 'jobs';

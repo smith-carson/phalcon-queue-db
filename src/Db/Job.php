@@ -16,22 +16,14 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
      * Not public to comply with the original Job class signature
      * @var string
      */
-    protected $tube = 'default';
+    protected $tube;
 
     public function __construct(Db $queue, $id, $body, $model = null)
     {
         parent::__construct($queue, $id, $body);
         if ($model instanceof JobModel) {
             $this->model = $model;
-        }
-    }
-
-    public function __get($prop) {
-        $getter = 'get'.ucfirst($prop);
-        if (method_exists($this, $getter)) {
-            return $this->$getter();
-        } else {
-            throw new \BadMethodCallException();
+            $this->tube  = $model->tube;
         }
     }
 

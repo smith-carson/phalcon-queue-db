@@ -20,6 +20,8 @@ class Db extends Beanstalk
     /** @var \Phalcon\Db\Adapter\Pdo */
     protected $connection;
 
+    protected $activeTube = 'default';
+
     /** Time to run (aka timeout) */
     const OPT_TTR      = 'ttr';
     /** How long to wait before this job becomes available */
@@ -69,23 +71,33 @@ class Db extends Beanstalk
     }
 
     /**
-     * Change the active tube. By default the tube is "default"
+     * Change the active tube. The default tube is "default".
      * @param string $tube
-     * @return bool|string
+     * @return string
+     * @see \Phalcon\Queue\Db::getActiveTube()
+     * @see \Phalcon\Queue\Db::watch()
      */
     public function choose($tube)
     {
+        return $this->activeTube = (string)$tube;
     }
 
     /**
-     * Change the active tube. By default the tube is "default"
-     *
+     * Change the active tube. The default tube is "default".
      * @param string $tube
-     * @return bool|string
+     * @return string
+     * @see \Phalcon\Queue\Db::getActiveTube()
+     * @see \Phalcon\Queue\Db::choose()
      */
-    public function watch($tube)
-    {
-    }
+    public function watch($tube) { return $this->choose($tube); }
+
+    /**
+     * Returns what tube is currently active.
+     * @return string
+     * @see \Phalcon\Queue\Db::choose()
+     * @see \Phalcon\Queue\Db::watch()
+     */
+    public function getActiveTube() { return $this->activeTube; }
 
     /**
      * Get stats of the open tubes.

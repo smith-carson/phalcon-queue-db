@@ -119,18 +119,31 @@ class DbTest extends \Codeception\TestCase\Test
         $job = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $job);
         $this->assertAttributeEquals('default', 'tube', $job);
+        $this->assertEquals($this->queue->getActiveTube(), 'default');
 
         //changes into "array" tube
         $this->queue->choose('array');
         $array = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
-        $this->assertAttributeEquals('array', 'tube', $job);
+        $this->assertAttributeEquals('array', 'tube', $array);
+        $this->assertEquals($this->queue->getActiveTube(), 'array');
 
         //and into "int" tube using different method
         $this->queue->watch('int');
-        $array = $this->queue->peekReady();
-        $this->assertInstanceOf(Job::class, $array);
-        $this->assertAttributeEquals('int', 'tube', $job);
+        $int = $this->queue->peekReady();
+        $this->assertInstanceOf(Job::class, $int);
+        $this->assertAttributeEquals('int', 'tube', $int);
+        $this->assertEquals($this->queue->getActiveTube(), 'int');
+
+        //finally, verify if those methods also play a role in stats
+        $stats = $this->queue->statsTube();
+        $this->assertEquals([
+            'active'   => 1,
+            'buried'   => 0,
+            'delayed'  => 0,
+            'reserved' => 0,
+            'total'    => 1,
+        ], $stats);
     }
 
     public function testReserve()

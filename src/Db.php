@@ -13,6 +13,8 @@ require_once __DIR__ . '/../tests/unit/DbTest.php';
  * <code>
  * $queue = new \Phalcon\Queue\Db();
  * </code>
+ *
+ * @todo: implement TTR and Job::touch()
  */
 class Db extends Beanstalk
 {
@@ -23,7 +25,7 @@ class Db extends Beanstalk
     protected $activeTube = 'default';
 
     /** Time to run (aka timeout) */
-    const OPT_TTR      = 'ttr';
+//    const OPT_TTR      = 'ttr';
     /** How long to wait before this job becomes available */
     const OPT_DELAY    = 'delay';
     const OPT_PRIORITY = 'priority'; //TODO: test me under JobTest
@@ -31,7 +33,7 @@ class Db extends Beanstalk
 
     const OPTIONS = [
         self::OPT_DELAY,
-        self::OPT_TTR,
+//        self::OPT_TTR,
         self::OPT_PRIORITY,
         self::OPT_TUBE,
     ];

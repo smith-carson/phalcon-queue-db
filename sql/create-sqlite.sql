@@ -1,10 +1,10 @@
 CREATE TABLE jobs (
-    id       INT PRIMARY KEY,
-    tube     TEXT NOT NULL DEFAULT 'default',
-    body     TEXT,
-    ttr      INT  NOT NULL DEFAULT 0,
-    delay    INT  NOT NULL DEFAULT 0,
-    priority INT  NOT NULL DEFAULT 0,
-    reserved INT  NOT NULL DEFAULT 0,
-    buried   INT  NOT NULL DEFAULT 0
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    tube     TEXT    NOT NULL DEFAULT 'default',
+    body     BLOB,
+--    ttr      INTEGER NOT NULL DEFAULT 0,
+    delay    INTEGER NOT NULL DEFAULT 0,
+    priority INTEGER NOT NULL DEFAULT 2147483648,
+    reserved INTEGER NOT NULL DEFAULT 0,
+    buried   INTEGER NOT NULL DEFAULT 0
 );

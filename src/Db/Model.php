@@ -11,11 +11,11 @@ class Model extends \Phalcon\Mvc\Model
 
     public $body;
 
-    public $ttr = 0;
+//    public $ttr = 0;
 
     public $delay = 0;
 
-    public $priority = 0;
+    public $priority = 2147483648;
 
     public $reserved = 0;
 

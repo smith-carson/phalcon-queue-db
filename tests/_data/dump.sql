@@ -1,10 +1,10 @@
 CREATE TABLE jobs (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    tube     TEXT NOT NULL DEFAULT 'default',
-    body     TEXT,
-    ttr      INTEGER NOT NULL DEFAULT 0,
+    tube     TEXT    NOT NULL DEFAULT 'default',
+    body     BLOB,
+--    ttr      INTEGER NOT NULL DEFAULT 0,
     delay    INTEGER NOT NULL DEFAULT 0,
-    priority INTEGER NOT NULL DEFAULT 0,
+    priority INTEGER NOT NULL DEFAULT 2147483648,
     reserved INTEGER NOT NULL DEFAULT 0,
     buried   INTEGER NOT NULL DEFAULT 0
 );
@@ -14,6 +14,7 @@ INSERT INTO jobs (tube, body, delay) VALUES ('default', 's:19:"delayed until lat
 INSERT INTO jobs (tube, body, delay) VALUES ('default', 's:18:"delay have expired";', 1420081200);
 INSERT INTO jobs (tube, body, buried) VALUES ('default', 's:6:"buried";', 1);
 INSERT INTO jobs (tube, body, reserved) VALUES ('default', 's:8:"reserved";', 1);
+--INSERT INTO jobs (tube, body, ttr) VALUES ('default', 's:8:"ttr";', 5);
 
 INSERT INTO jobs (tube, body) VALUES ('default', 's:2:"10";');
 INSERT INTO jobs (tube, body) VALUES ('default', 's:2:"15";');

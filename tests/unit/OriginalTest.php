@@ -14,7 +14,7 @@ class OriginalTest extends \Codeception\TestCase\Test
     {
         try {
             $this->queue = new Phalcon\Queue\Db();
-//            @$this->queue->connect();
+            @$this->queue->connect();
         } catch (Exception $e) {
             $this->markTestSkipped($e->getMessage());
 

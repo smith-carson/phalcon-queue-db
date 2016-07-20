@@ -23,6 +23,12 @@ class Db extends Beanstalk
     protected $connection;
 
     /**
+     * Used for the db connection
+     * @var  string
+     */
+    protected $diServiceKey;
+
+    /**
      * Where to put jobs.
      * @var string
      */
@@ -49,13 +55,27 @@ class Db extends Beanstalk
     ];
 
     /**
-     * Queue manager constructor. By default, will look for a service called 'db'.
+     * Queue manager constructor. Will connect upon creation.
+     * By default, will look for a service called 'db'.
      * @todo implement some way to force a persistent db connection
-     * @param string $di_service_key
+     * @param string $diServiceKey
      */
-    public function __construct($di_service_key = 'db')
+    public function __construct($diServiceKey = 'db')
     {
-        $this->connection = Di::getDefault()->get($di_service_key);
+        $this->diServiceKey = $diServiceKey;
+        $this->connect();
+    }
+
+    /**
+     * Opens a connection to the database, using dependency injection.
+     * @see \Phalcon\Queue\Db::diServiceKey
+     * @return boolean
+     */
+    public function connect() {
+        if (!$this->connection) {
+            $this->connection = Di::getDefault()->get($this->diServiceKey);
+        }
+        return true;
     }
 
     /**
@@ -301,7 +321,16 @@ class Db extends Beanstalk
 
     }
 
-    public function connect() { throw new BadMethod('"connect" is not a valid method in DB queues.'); }
+    public function __sleep()
+    {
+        return ['diServiceKey','using','watching'];
+    }
+
+    public function __wakeup()
+    {
+        $this->connect();
+    }
+
     public function read($length = 0) { throw new BadMethod('"read" is not a valid method in DB queues.'); }
     protected function write($data) { throw new BadMethod('"write" is not a valid method in DB queues.'); }
     public function disconnect() { throw new BadMethod('"disconnect" is not a valid method in DB queues.'); }

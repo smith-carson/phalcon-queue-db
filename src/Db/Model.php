@@ -11,6 +11,8 @@ class Model extends \Phalcon\Mvc\Model
 
     public $body;
 
+    public $created_at;
+
 //    public $ttr = 0;
 
     public $delay = 0;
@@ -21,8 +23,20 @@ class Model extends \Phalcon\Mvc\Model
 
     public $buried = 0;
 
-    public function getSource()
+    public function getSource() { return 'jobs'; }
+
+    public function beforeCreate()
     {
-        return 'jobs';
+        $this->created_at = time();
+    }
+
+    public function priorityText()
+    {
+        switch ($this->priority) {
+            case Job::PRIORITY_HIGHEST: return 'highest';
+            case Job::PRIORITY_MEDIUM: return 'medium';
+            case Job::PRIORITY_LOWEST: return 'lowest';
+            default: return ($this->priority < Job::PRIORITY_MEDIUM)? 'high' : 'low';
+        }
     }
 }

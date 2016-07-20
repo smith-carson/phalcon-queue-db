@@ -1,5 +1,6 @@
 <?php
 use Phalcon\Queue\Db;
+use Phalcon\Queue\Db\InvalidJobOperationException as InvalidJobOperation;
 use Phalcon\Queue\Db\Job;
 use Phalcon\Queue\Db\Model as JobModel;
 
@@ -15,7 +16,7 @@ class JobTest extends \Codeception\TestCase\Test
      */
     public function getAJob($criteria = null)
     {
-        $model = JobModel::findFirst($criteria?: ['order' => 'RAND()']);
+        $model = JobModel::findFirst($criteria?: ['order' => 'RANDOM()']);
         return $model? new Job(new Db(), $model) : false;
     }
 
@@ -38,12 +39,38 @@ class JobTest extends \Codeception\TestCase\Test
         $this->assertEquals($id, $job->getId());
     }
 
+    public function testGetState()
+    {
+        $now = time();
+        $this->assertEquals(Job::ST_READY, $this->getAJob('tube="int"')->getState());
+        $this->assertEquals(Job::ST_READY, $this->getAJob('delay <= '.$now)->getState());
+        $this->assertEquals(Job::ST_DELAYED, $this->getAJob('delay > '.$now)->getState());
+        $this->assertEquals(Job::ST_BURIED, $this->getAJob('buried = 1')->getState());
+        $this->assertEquals(Job::ST_RESERVED, $this->getAJob('reserved = 1')->getState());
+        $this->assertEquals(Job::ST_URGENT, $this->getAJob('priority < '.Job::PRIORITY_MEDIUM)->getState());
+    }
+
     public function testGetBody()
     {
         $job = $this->getAJob('tube="int"');
         $this->assertSame(10, $job->getBody());
     }
 
+    /**
+     * @depends testGetId
+     * @depends testGetState
+     */
+    public function testDelete()
+    {
+        $reserved = $this->getAJob('buried = 1 OR reserved = 1');
+        $reserved->delete();
+        $this->assertFalse($this->getAJob($reserved->getId()));
+
+        $ready = $this->getAJob('reserved = 0');
+        $this->tester->expectException(InvalidJobOperation::class, function() use ($ready) { $ready->delete(); });
+    }
+
+    /** @depends testGetState */
     public function testStats()
     {
         $stats = $this->getAJob()->stats();
@@ -52,18 +79,15 @@ class JobTest extends \Codeception\TestCase\Test
         }
     }
 
-    public function testDelete()
-    {
-        $job = $this->getAJob(1);
-        $job->delete();
-        $this->assertFalse($this->getAJob(1));
-    }
-
+    /**
+     * @depends testDelete
+     * @depends testStats
+     */
     public function testStatsOfDeleted()
     {
-        $job = $this->getAJob();
+        $job = $this->getAJob('buried = 1 OR reserved = 1');
         $job->delete();
-        $this->tester->expectException(BadMethodCallException::class, function() use ($job) { $job->stats(); });
+        $this->tester->expectException(InvalidJobOperation::class, function() use ($job) { $job->stats(); });
     }
 
     public function testRelease()
@@ -73,25 +97,24 @@ class JobTest extends \Codeception\TestCase\Test
 
     public function testBury()
     {
-        $job = $this->getAJob();
+        $job = $this->getAJob('buried = 0');
         $job->bury();
-        $this->assertEquals(Job::ST_BURIED, $job->stats()['state']);
+        $this->assertEquals(Job::ST_BURIED, $job->getState());
     }
 
     public function testBuryWithPriority()
     {
         $job = $this->getAJob();
         $job->bury($priority = 55);
-        $this->assertEquals(Job::ST_BURIED, $job->stats()['state']);
+        $this->assertEquals(Job::ST_BURIED, $job->getState());
         $this->assertEquals($priority, $job->stats()['priority']);
     }
 
     public function testKick()
     {
-        $job = $this->getAJob();
-        $job->bury();
+        $job = $this->getAJob('buried = 1');
         $job->kick();
-        $this->assertEquals(Job::ST_READY, $job->stats()['state']);
+        $this->assertEquals(Job::ST_READY, $job->getState());
     }
 
     public function testUnserialize()
@@ -99,7 +122,6 @@ class JobTest extends \Codeception\TestCase\Test
         $job = $this->getAJob();
         $packed   = serialize($job);
         $unpacked = unserialize($packed);
-        $this->assertEquals($job->getModel(), $unpacked->getModel()); //TODO: could be taken out if the next line also does this
         $this->assertEquals($unpacked, $job);
     }
 

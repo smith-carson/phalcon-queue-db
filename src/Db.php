@@ -101,6 +101,14 @@ class Db extends Beanstalk
      */
     public function reserve($timeout = 0, $pool = 1)
     {
+        $job = $this->peekReady();
+        if (!$job) {
+            return null;
+        }
+
+        $job->getModel()->update(['reserved' => 1]);
+
+        return $job;
     }
 
     /**
@@ -190,10 +198,14 @@ class Db extends Beanstalk
                 'COUNT(*) AS total',
                 Job::ST_BURIED,
                 Job::ST_RESERVED,
-                'delay >= :timestamp: AS '.Job::ST_DELAYED,
+                'priority < :mid_priority: AS '.Job::ST_URGENT,
+                'delay >= :now: AS '.Job::ST_DELAYED,
             ])
-            ->bind(['timestamp' => time()])
-            ->groupBy(['tube', Job::ST_BURIED, Job::ST_RESERVED, Job::ST_DELAYED])
+            ->bind([
+                'mid_priority' => Job::PRIORITY_MEDIUM,
+                'now'          => time(),
+            ])
+            ->groupBy(['tube', Job::ST_BURIED, Job::ST_RESERVED, Job::ST_URGENT, Job::ST_DELAYED])
             ->orderBy('tube');
 
         if ($filterTube) {
@@ -208,6 +220,7 @@ class Db extends Beanstalk
             Job::ST_READY    => 0,
             Job::ST_RESERVED => 0,
             'total'          => 0,
+            Job::ST_URGENT   => 0,
         ];
         $stats     = (!$filterTube) ? ['all' => $structure] : [];
         foreach ($result->toArray() as $entry) {
@@ -280,19 +293,15 @@ class Db extends Beanstalk
     public function peekReady()
     {
         $job = JobModel::findFirst([
-            'conditions' => 'tube = :tube: AND delay < :timestamp:',
+            'conditions' => 'tube IN ({tubes:array}) AND delay < :now: AND reserved = 0',
             'order'      => 'id ASC',
             'bind'       => [
-                'tube'      => $this->using,
-                'timestamp' => time()
+                'tubes' => $this->watching,
+                'now'   => time()
             ],
         ]);
 
-        if ($job) {
-            return Job::fromModel($this, $job);
-        } else {
-            return false;
-        }
+        return $job? new Job($this, $job) : null;
     }
 
     /**

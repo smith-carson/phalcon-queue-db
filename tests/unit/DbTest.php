@@ -95,7 +95,7 @@ class DbTest extends \Codeception\TestCase\Test
     public function testListAllTubes()
     {
         $tubes = $this->queue->listTubes();
-        $this->assertEquals(self::$tubes, $tubes, 'not all tubes were found', null, null, true);
+        $this->assertEquals(self::$tubes, $tubes, 'not all tubes were found', 0, 2, true);
     }
 
     public function testStats()
@@ -115,6 +115,7 @@ class DbTest extends \Codeception\TestCase\Test
         $this->markTestIncomplete('depends on put() test implementation first to choose where job will be put');
     }
 
+    /** @depends testReserve */
     public function testWatch()
     {
         //gets from the default tube
@@ -174,18 +175,20 @@ class DbTest extends \Codeception\TestCase\Test
         $this->markTestIncomplete();
     }
 
+    /** @depends testPeekReady */
     public function testReserve()
     {
         //reserves one
         $job = $this->queue->reserve();
         $this->assertInstanceOf(Job::class, $job);
-        $this->assertEquals(Job::ST_RESERVED, $job->stats()['state']);
+        $this->assertEquals(Job::ST_RESERVED, $job->getState());
 
         //another reserve should return a different job
         $other = $this->queue->reserve();
         $this->assertNotEquals($job, $other);
     }
 
+    /** @depends testReserve */
     public function testReserveEmpty()
     {
         //chooses a tube that has only one job available and tries to reserve two
@@ -194,6 +197,7 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertFalse($this->queue->reserve());
     }
 
+    /** @depends testReserve */
     public function testReserveTimeout()
     {
         //chooses a tube that has only one job available, and reserves it
@@ -207,9 +211,16 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals(time(), $time+5, null, 1);
     }
 
+    /** @depends testReserve */
     public function testReserveDelayed()
     {
         $this->markTestIncomplete('should put a delayed job and wait a bit until it gets ready');
+    }
+
+    /** @depends testReserve */
+    public function testReservePrioritized()
+    {
+        $this->markTestIncomplete('should reserve three jobs with different priorities and see them in order');
     }
 
     public function testRelease()
@@ -269,7 +280,7 @@ Missing test of the complete workflow, as the Beanstalk doc says:
                        |  delete
                         `--------> *poof*
 
-Pay special attention to not being able to operate on ready jobs wihtout reserving them first!!!!!! 
+Pay special attention to not being able to operate on ready jobs without reserving them first!!!!!! 
 TEXT
 );
 

@@ -21,3 +21,8 @@ modules:
             populate: true
             cleanup: true
             dump: tests/_data/dump.sql
+
+coverage:
+    enabled: true
+    include:
+        - src/*

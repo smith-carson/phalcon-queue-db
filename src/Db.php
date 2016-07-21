@@ -93,20 +93,28 @@ class Db extends Beanstalk
         return $job->id;
     }
 
-    /**
-     * Reserves a job in the queue
-     * @param int $timeout How long to wait while pooling for a new job
-     * @param int $pool    How frequently to pool for a new job (in seconds).
-     * @return bool|\Phalcon\Queue\Db\Job
-     */
-    public function reserve($timeout = 0, $pool = 1)
-    {
-        $job = $this->peekReady();
-        if (!$job) {
+    protected function simpleReserve() {
+        if ($job = $this->peekReady()) {
+            $job->getModel()->update(['reserved' => 1]);
+            return $job;
+        } else {
             return null;
         }
+    }
 
-        $job->getModel()->update(['reserved' => 1]);
+    /**
+     * Reserves a job in the queue
+     * @param int $timeout How long to wait while pooling for a new job before returning
+     * @return bool|\Phalcon\Queue\Db\Job
+     */
+    public function reserve($timeout = 0)
+    {
+        $job = $this->simpleReserve();
+
+        if (!$job && $timeout > 0) { //tries again after a couple of seconds
+            sleep($timeout);
+            $job = $this->simpleReserve();
+        }
 
         return $job;
     }
@@ -133,7 +141,8 @@ class Db extends Beanstalk
         if ($replace) {
             $this->watching = (array)$tube;
         } else {
-            $this->watching = array_unique(array_merge($this->watching, (array)$tube));
+            //merges, throws away repeated values, and re-indexes
+            $this->watching = array_values(array_unique(array_merge($this->watching, (array)$tube)));
         }
         return $this->watching;
     }
@@ -147,7 +156,9 @@ class Db extends Beanstalk
     public function ignore($tube)
     {
         if (sizeof($this->watching) > 1) {
-            $this->watching = array_filter($this->watching, function($v) use ($tube) { return $v != $tube; });
+            $this->watching = array_values( //array_values() reindexes the filtered array
+                array_filter($this->watching, function($v) use ($tube) { return $v != $tube; })
+            );
         }
         return $this->watching;
     }
@@ -159,7 +170,6 @@ class Db extends Beanstalk
      * @see \Phalcon\Queue\Db::chosen()
      */
     public function using() { return $this->using; }
-
 
     /**
      * Returns what tube is currently active to put jobs on.
@@ -284,6 +294,27 @@ class Db extends Beanstalk
      */
     public function peek($id)
     {
+        $job = JobModel::findFirst($id);
+        return new Job($this, $job);
+    }
+
+    /**
+     * Finds a job given certain conditions.
+     * @param array|string $conditions One or more SQL conditions. Each array entry will be joined with "AND".
+     * @param array        $bind       Bind params, if needed.
+     * @return null|Job
+     */
+    protected function queriedPeek($conditions, array $bind = [])
+    {
+        $conditions = array_merge((array)$conditions, ['tube IN ({tubes:array})']);
+
+        $job = JobModel::findFirst([
+            'conditions' => implode(' AND ', $conditions),
+            'bind'       => array_merge(['tubes' => $this->watching], $bind),
+            'order'      => 'id ASC',
+        ]);
+
+        return $job? new Job($this, $job) : null;
     }
 
     /**
@@ -292,16 +323,7 @@ class Db extends Beanstalk
      */
     public function peekReady()
     {
-        $job = JobModel::findFirst([
-            'conditions' => 'tube IN ({tubes:array}) AND delay < :now: AND reserved = 0',
-            'order'      => 'id ASC',
-            'bind'       => [
-                'tubes' => $this->watching,
-                'now'   => time()
-            ],
-        ]);
-
-        return $job? new Job($this, $job) : null;
+        return $this->queriedPeek(['delay <= :now:', 'reserved = 0'], ['now' => time()]);
     }
 
     /**
@@ -310,6 +332,7 @@ class Db extends Beanstalk
      */
     public function peekBuried()
     {
+        return $this->queriedPeek('buried = 1');
     }
 
     /**
@@ -318,6 +341,7 @@ class Db extends Beanstalk
      */
     public function peekDelayed()
     {
+        return $this->queriedPeek(['delay > :now:', 'reserved = 0'], ['now' => time()]);
     }
 
     /**

@@ -132,18 +132,20 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
         return $this->model->update(['buried' => 0]);
     }
 
+    /** @todo turn this into a fancy object with ArrayAccess */
     public function stats()
     {
         if ($this->deleted) {
             throw new InvalidJobOperationException('Cannot get stats from deleted job');
         }
         $model = $this->model;
+        $delay = $model->delay - time();
         return [
             'age'           => $model->created_at - time(),
             'id'            => $this->getId(),
             'state'         => $this->getState(),
             'tube'          => $model->tube,
-            'delay'         => time() - $model->delay,
+            'delay'         => ($delay > 0)? $delay : 0,
             'delayed_until' => $model->delay,
             'priority'      => $model->priority,
             'priority_text' => $model->priorityText(),

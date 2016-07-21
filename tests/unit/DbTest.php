@@ -110,54 +110,57 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals(self::$stats[self::TUBE_DEFAULT], $stats);
     }
 
+    /** @depends testPut */
     public function testChoose()
     {
-        $this->markTestIncomplete('depends on put() test implementation first to choose where job will be put');
     }
 
     /** @depends testReserve */
     public function testWatch()
     {
         //gets from the default tube
+        $this->assertEquals($this->queue->watching(), [self::TUBE_DEFAULT]);
         $job = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $job);
         $this->assertAttributeEquals(self::TUBE_DEFAULT, 'tube', $job);
-        $this->assertEquals($this->queue->watching(), [self::TUBE_DEFAULT]);
 
         //watches "array" tube only
         $this->queue->watch(self::TUBE_ARRAY, true);
+        $this->assertEquals($this->queue->watching(), [self::TUBE_ARRAY]);
         $array = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
         $this->assertAttributeEquals(self::TUBE_ARRAY, 'tube', $array);
-        $this->assertEquals($this->queue->watching(), [self::TUBE_ARRAY]);
 
         //watches also "int" tube
-        $this->queue->watch(self::TUBE_INT, true);
+        $this->queue->watch(self::TUBE_INT);
+        $this->assertEquals($this->queue->watching(), [self::TUBE_ARRAY, self::TUBE_INT]);
         $array = $this->queue->reserve(); //reserves this one so peek() returns another one later
         $int   = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
         $this->assertInstanceOf(Job::class, $int);
         $this->assertAttributeEquals(self::TUBE_ARRAY, 'tube', $array);
         $this->assertAttributeEquals(self::TUBE_INT, 'tube', $int);
-        $this->assertEquals($this->queue->watching(), [self::TUBE_ARRAY, self::TUBE_INT]);
     }
 
+    /** @depends testWatch */
     public function testIgnore()
     {
         //default tube is the only being watched in the beginning
-        $this->assertEquals($this->queue->watching(), [self::TUBE_DEFAULT]);
+        $this->assertEquals([self::TUBE_DEFAULT], $this->queue->watching());
 
         //adds INT and makes sure it's there
         $this->queue->watch(self::TUBE_INT);
-        $this->assertEquals($this->queue->watching(), [self::TUBE_DEFAULT, self::TUBE_INT]);
+        $this->assertEquals([self::TUBE_DEFAULT, self::TUBE_INT], $this->queue->watching());
 
         //removes default and make sure it's gone
-        $this->queue->ignore(self::TUBE_DEFAULT);
-        $this->assertEquals($this->queue->watching(), [self::TUBE_INT]);
+        $watching = $this->queue->ignore(self::TUBE_DEFAULT);
+        $this->assertEquals([self::TUBE_INT], $watching);
+        $this->assertEquals([self::TUBE_INT], $this->queue->watching());
 
         //tries to remove int as well, silently ignored
-        $this->queue->ignore(self::TUBE_INT);
-        $this->assertEquals($this->queue->watching(), [self::TUBE_INT]);
+        $watching = $this->queue->ignore(self::TUBE_INT);
+        $this->assertEquals([self::TUBE_INT], $watching);
+        $this->assertEquals([self::TUBE_INT], $this->queue->watching());
     }
 
     public function testPut()
@@ -193,8 +196,8 @@ class DbTest extends \Codeception\TestCase\Test
     {
         //chooses a tube that has only one job available and tries to reserve two
         $this->queue->watch(self::TUBE_ARRAY, true);
-        $job = $this->queue->reserve();
-        $this->assertFalse($this->queue->reserve());
+        $this->queue->reserve();
+        $this->assertNull($this->queue->reserve());
     }
 
     /** @depends testReserve */
@@ -206,9 +209,9 @@ class DbTest extends \Codeception\TestCase\Test
 
         //tests timeout on a reserve operation
         $time = time();
-        $nothing = $this->queue->reserve(5);
-        $this->assertFalse($nothing);
-        $this->assertEquals(time(), $time+5, null, 1);
+        $nothing = $this->queue->reserve($timeout = 2);
+        $this->assertNull($nothing);
+        $this->assertEquals(time(), $time+$timeout, null, 1);
     }
 
     /** @depends testReserve */
@@ -230,7 +233,9 @@ class DbTest extends \Codeception\TestCase\Test
 
     public function testPeek()
     {
-        $this->markTestIncomplete();
+        $job = $this->queue->peek(1);
+        $this->assertInstanceOf(Job::class, $job);
+        $this->assertEquals(1, $job->getId());
     }
 
     public function testPeekReady()
@@ -247,11 +252,19 @@ class DbTest extends \Codeception\TestCase\Test
         $job = $this->queue->peekBuried();
         $this->assertInstanceOf(Job::class, $job);
         $this->assertEquals($job->getBody(), 'buried');
+        $this->assertEquals($job->getState(), Job::ST_BURIED);
     }
 
     public function testPeekDelayed()
     {
-        $this->markTestIncomplete();
+        $job = $this->queue->peekDelayed();
+        $this->assertInstanceOf(Job::class, $job);
+        $this->assertEquals($job->getBody(), 'delayed until later');
+
+        $stats = $job->stats();
+        $this->assertEquals($stats['state'], Job::ST_DELAYED);
+        $this->assertGreaterThan(time(), $stats['delayed_until']);
+        $this->assertGreaterThan(0, $stats['delay']);
     }
 
     //TODO: implement workflow test

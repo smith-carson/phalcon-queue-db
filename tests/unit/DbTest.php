@@ -110,9 +110,17 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals(self::$stats[self::TUBE_DEFAULT], $stats);
     }
 
-    /** @depends testPut */
+    /**
+     * @depends testPut
+     * @depends testPeek
+     */
     public function testChoose()
     {
+        $this->queue->choose($tube = 'special');
+        $id  = $this->queue->put('special');
+        $job = $this->queue->peek($id);
+        $this->assertInstanceOf(Job::class, $job);
+        $this->assertEquals($tube, $job->stats()['tube']);
     }
 
     /** @depends testReserve */
@@ -122,14 +130,14 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($this->queue->watching(), [self::TUBE_DEFAULT]);
         $job = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $job);
-        $this->assertAttributeEquals(self::TUBE_DEFAULT, 'tube', $job);
+        $this->assertEquals(self::TUBE_DEFAULT, $job->stats()['tube']);
 
         //watches "array" tube only
         $this->queue->watch(self::TUBE_ARRAY, true);
         $this->assertEquals($this->queue->watching(), [self::TUBE_ARRAY]);
         $array = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
-        $this->assertAttributeEquals(self::TUBE_ARRAY, 'tube', $array);
+        $this->assertEquals(self::TUBE_ARRAY, $array->stats()['tube']);
 
         //watches also "int" tube
         $this->queue->watch(self::TUBE_INT);
@@ -138,8 +146,8 @@ class DbTest extends \Codeception\TestCase\Test
         $int   = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
         $this->assertInstanceOf(Job::class, $int);
-        $this->assertAttributeEquals(self::TUBE_ARRAY, 'tube', $array);
-        $this->assertAttributeEquals(self::TUBE_INT, 'tube', $int);
+        $this->assertEquals(self::TUBE_ARRAY, $array->stats()['tube']);
+        $this->assertEquals(self::TUBE_INT, $int->stats()['tube']);
     }
 
     /** @depends testWatch */
@@ -163,18 +171,82 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals([self::TUBE_INT], $this->queue->watching());
     }
 
+    /** @depends testPeek */
     public function testPut()
     {
-        $this->markTestIncomplete();
+        $id = $this->queue->put($body = 'test');
+        $this->assertInternalType('int', $id);
+        $this->assertGreaterThan(0, $id);
+        $job = $this->queue->peek($id);
+        $this->assertEquals($body, $job->getBody());
     }
 
-    public function testPriority()
+    /** @depends testPut */
+    public function testPutComplexTypes()
     {
-        $this->markTestIncomplete('should put a job with priority and see it getting in front of newer jobs when reserving');
+        //FIXME: read about data providers
+        $bodies = [
+            'array'  => [1 => 'a', 'b' => false],
+            'object' => new DateTime('now')
+        ];
+
+        foreach ($bodies as $type => $body) {
+            $id = $this->queue->put($body);
+            $this->assertInternalType('int', $id, "Body of $type is not int");
+            $this->assertGreaterThan(0, $id, "ID of $type seems weird");
+            $this->assertEquals($body, $this->queue->peek($id)->getBody(), "Body of $type failed on comparison");
+        }
     }
 
+    /**
+     * @depends testPut
+     * @depends testPeek
+     */
+    public function testPutPriority()
+    {
+        $body     = 'URGENT';
+        $priority = Job::PRIORITY_HIGHEST;
+
+        //puts the job correctly
+        $id = $this->queue->put($body, [Db::OPT_PRIORITY => $priority]);
+        $this->assertInternalType('int', $id);
+
+        //verifies if the job information is correct
+        $job   = $this->queue->peek($id);
+        $stats = $job->stats();
+        $this->assertEquals($body, $job->getBody());
+        $this->assertEquals($priority, $stats['priority']);
+    }
+
+    /**
+     * @depends testPut
+     * @depends testPeek
+     */
     public function testPutDelay()
     {
+        $body  = 'delayed';
+        $start = time();
+        $delay = 2;
+
+        //puts the job correctly
+        $id = $this->queue->put($body, [Db::OPT_DELAY => $delay]);
+        $this->assertInternalType('int', $id);
+
+        //verifies if the job information is correct
+        $job   = $this->queue->peek($id);
+        $stats = $job->stats();
+        $this->assertEquals($body, $job->getBody());
+        $this->assertEquals($delay, $stats['delay']);
+        $this->assertEquals($start+$delay, $stats['delayed_until']);
+    }
+
+    /**
+     * @depends testPutPriority
+     * @depends testPutDelay
+     */
+    public function testPutAllTogetherNow()
+    {
+        //verifies all properties are being correctly set all at once - their behaviour is verified in the other tests
         $this->markTestIncomplete();
     }
 
@@ -214,16 +286,37 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals(time(), $time+$timeout, null, 1);
     }
 
-    /** @depends testReserve */
+    /**
+     * @depends testPut
+     * @depends testChoose
+     * @depends testWatch
+     * @depends testPeek
+     * @depends testReserve
+     * @depends testReserveTimeout
+     */
     public function testReserveDelayed()
     {
-        $this->markTestIncomplete('should put a delayed job and wait a bit until it gets ready');
+        $body  = 'specially delayed';
+        $delay = 2;
+        $tube  = 'special'; //uses a special tube so we have no jobs in front of this
+        $this->queue->choose($tube);
+        $this->queue->watch($tube, true);
+
+        $this->queue->put($body, [Db::OPT_DELAY => $delay]);
+        $this->assertNull($this->queue->reserve());     //gets nothing for now
+        $job = $this->queue->reserve($delay);           //then, after two seconds...
+        $this->assertInstanceOf(Job::class, $job);      //...it gets a job...
+        $this->assertEquals(0, $job->stats()['delay']); //...with the correct values :D
+        $this->assertEquals($body, $job->getBody());
     }
 
     /** @depends testReserve */
     public function testReservePrioritized()
     {
-        $this->markTestIncomplete('should reserve three jobs with different priorities and see them in order');
+        $this->queue->put($urgent = 'URGENT', [Db::OPT_PRIORITY => Job::PRIORITY_HIGHEST]);
+        $this->queue->put($almost = 'ALMOST', [Db::OPT_PRIORITY => Job::PRIORITY_HIGHEST + 1]);
+        $this->assertEquals($urgent, $this->queue->reserve()->getBody());
+        $this->assertEquals($almost, $this->queue->reserve()->getBody());
     }
 
     public function testRelease()
@@ -267,7 +360,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertGreaterThan(0, $stats['delay']);
     }
 
-    //TODO: implement workflow test
     //TODO: review Beanstalk doc to see if there's any missing operation or option: https://github.com/earl/beanstalkc/blob/master/TUTORIAL.mkd
     public function testWorkflow()
     {

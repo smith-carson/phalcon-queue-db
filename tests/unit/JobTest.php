@@ -74,9 +74,24 @@ class JobTest extends \Codeception\TestCase\Test
     public function testStats()
     {
         $stats = $this->getAJob()->stats();
-        foreach(['age','id','state','tube','delay','priority'] as $key) {
+        foreach (['age', 'id', 'state', 'tube', 'delay', 'delayed_until', 'priority', 'priority_text'] as $key) {
             $this->assertArrayHasKey($key, $stats, "Key $key not found on job stats");
         }
+        $this->assertGreaterThan(0,         $stats['age']);
+        $this->assertInternalType('int',    $stats['id']);
+        $this->assertGreaterThan(0,         $stats['id']);
+        $this->assertInternalType('string', $stats['state']);
+        $this->assertNotEmpty(              $stats['state']);
+        $this->assertInternalType('string', $stats['tube']);
+        $this->assertNotEmpty(              $stats['tube']);
+        $this->assertTrue(in_array(         $stats['tube'], DbTest::$tubes), 'invalid tube');
+        $this->assertInternalType('int',    $stats['delay']);
+        $this->assertGreaterThanOrEqual(0,  $stats['delay']);
+        $this->assertInternalType('int',    $stats['delayed_until']); //no need to check for valid timestamp: any int is
+        $this->assertInternalType('int',    $stats['priority']);
+        $this->assertGreaterThanOrEqual(0,  $stats['priority']);
+        $this->assertInternalType('string', $stats['priority_text']);
+        $this->assertNotEmpty(              $stats['priority_text']);
     }
 
     /**

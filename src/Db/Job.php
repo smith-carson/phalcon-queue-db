@@ -14,13 +14,6 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
     protected $model;
 
     /**
-     * Used internally, for testing.
-     * Not public to comply with the original Job class signature
-     * @var string
-     */
-    protected $tube;
-
-    /**
      * Used while the instance is still valid but the job was deleted
      * @var bool
      */
@@ -44,11 +37,7 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
         $this->setModel($model);
     }
 
-    protected function setModel(JobModel $model)
-    {
-        $this->model = $model;
-        $this->tube  = $model->tube;
-    }
+    protected function setModel(JobModel $model) { $this->model = $model; }
 
     /**
      * @return JobModel
@@ -64,7 +53,7 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
 
     public function getId()
     {
-        return $this->_id;
+        return (int)$this->_id;
     }
 
     public function getState()
@@ -141,20 +130,20 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
         $model = $this->model;
         $delay = $model->delay - time();
         return [
-            'age'           => $model->created_at - time(),
+            'age'           => time() - $model->created_at,
             'id'            => $this->getId(),
             'state'         => $this->getState(),
             'tube'          => $model->tube,
             'delay'         => ($delay > 0)? $delay : 0,
-            'delayed_until' => $model->delay,
-            'priority'      => $model->priority,
+            'delayed_until' => (int)$model->delay,
+            'priority'      => (int)$model->priority,
             'priority_text' => $model->priorityText(),
         ];
     }
 
     public function __sleep()
     {
-        return ['tube', 'deleted', '_id', '_body', '_queue'];
+        return ['deleted', '_id', '_body', '_queue'];
     }
 
     public function __wakeup()

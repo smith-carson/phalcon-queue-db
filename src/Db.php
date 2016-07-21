@@ -42,7 +42,7 @@ class Db extends Beanstalk
 
     /** Time to run (aka timeout) */
 //    const OPT_TTR      = 'ttr';
-    /** How long to wait before this job becomes available */
+    /** How many seconds to wait before this job becomes available */
     const OPT_DELAY    = 'delay';
     const OPT_PRIORITY = 'priority';
     const OPT_TUBE     = 'tube';
@@ -86,11 +86,18 @@ class Db extends Beanstalk
      */
     public function put($data, $options = [])
     {
-        $payload = array_merge($options, ['body' => serialize($data)]);
+        if (isset($options[self::OPT_DELAY])) { //delay is given in secs, but stored in the database as timestamp to run
+            $options[self::OPT_DELAY] += time();
+        }
+
+        $payload = array_merge($options, [
+            'body' => serialize($data),
+            'tube' => $this->using
+        ]);
         $job     = new JobModel();
         $job->save($payload);
 
-        return $job->id;
+        return (int)$job->id;
     }
 
     protected function simpleReserve() {
@@ -311,7 +318,7 @@ class Db extends Beanstalk
         $job = JobModel::findFirst([
             'conditions' => implode(' AND ', $conditions),
             'bind'       => array_merge(['tubes' => $this->watching], $bind),
-            'order'      => 'id ASC',
+            'order'      => 'priority ASC, id ASC',
         ]);
 
         return $job? new Job($this, $job) : null;

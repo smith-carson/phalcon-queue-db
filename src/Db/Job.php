@@ -102,7 +102,10 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
 
     public function bury($priority = null)
     {
-        $data = ['buried' => 1];
+        $data = [
+            'buried'   => 1,
+            'reserved' => 0,
+        ];
         if ($priority) {
             $data['priority'] = $priority;
         }
@@ -118,7 +121,17 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
 
     public function kick()
     {
-        return $this->model->update(['buried' => 0]);
+        $payload = [];
+        switch ($this->getState()) {
+            case self::ST_BURIED: $payload = ['buried' => 0]; break;
+            case self::ST_DELAYED: $payload = ['delay' => 0]; break; //FIXME: missing tests for kicking a delayed job!
+        }
+
+        if ($payload) {
+            return $this->model->update($payload);
+        } else {
+            return true;
+        }
     }
 
     /** @todo turn this into a fancy object with ArrayAccess */

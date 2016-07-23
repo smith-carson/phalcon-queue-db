@@ -319,11 +319,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($almost, $this->queue->reserve()->getBody());
     }
 
-    public function testRelease()
-    {
-        $this->markTestIncomplete('should reserve a job and release it back and see it\'s status. also, test $priority and $delay arguments');
-    }
-
     public function testPeek()
     {
         $job = $this->queue->peek(1);
@@ -358,36 +353,5 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($stats['state'], Job::ST_DELAYED);
         $this->assertGreaterThan(time(), $stats['delayed_until']);
         $this->assertGreaterThan(0, $stats['delay']);
-    }
-
-    //TODO: review Beanstalk doc to see if there's any missing operation or option: https://github.com/earl/beanstalkc/blob/master/TUTORIAL.mkd
-    public function testWorkflow()
-    {
-        $this->markTestIncomplete(<<<'TEXT'
-Missing test of the complete workflow, as the Beanstalk doc says:
-
-     put with delay               release with delay
-    ----------------> [DELAYED] <------------.
-                        |                    |
-                        | (time passes)      |
-                        |                    |
-     put                v       reserve      |        delete
-    -----------------> [READY] ---------> [RESERVED] --------> *poof*
-                       ^  ^                |   |
-                       |   \    release    |   |
-                       |    `--------------'   |
-                       |                       |
-                       | kick                  |
-                       |                       |
-                       |       bury            |
-                    [BURIED] <-----------------'
-                       |
-                       |  delete
-                        `--------> *poof*
-
-Pay special attention to not being able to operate on ready jobs without reserving them first!!!!!! 
-TEXT
-);
-
     }
 }

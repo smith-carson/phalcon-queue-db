@@ -80,9 +80,11 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
 
     public function delete()
     {
-        if (!in_array($this->getState(), [self::ST_BURIED, self::ST_RESERVED])) {
-            throw new InvalidJobOperationException('Only buried or reserved jobs can be deleted');
-        }
+        //FIXME: good boy, Phalcon\Beanstalk. You don't even try to implement the actual Beanstalk spec!!!
+        //skipping this one to maintain compatibility with the original implementation
+//        if (!in_array($this->getState(), [self::ST_BURIED, self::ST_RESERVED])) {
+//            throw new InvalidJobOperationException('Only buried or reserved jobs can be deleted');
+//        }
         $this->deleted = true;
         return $this->model->delete();
     }

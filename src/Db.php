@@ -45,13 +45,11 @@ class Db extends Beanstalk
     /** How many seconds to wait before this job becomes available */
     const OPT_DELAY    = 'delay';
     const OPT_PRIORITY = 'priority';
-    const OPT_TUBE     = 'tube';
 
     const OPTIONS = [
         self::OPT_DELAY,
 //        self::OPT_TTR,
         self::OPT_PRIORITY,
-        self::OPT_TUBE,
     ];
 
     /**
@@ -105,7 +103,7 @@ class Db extends Beanstalk
             $job->getModel()->update(['reserved' => 1]);
             return $job;
         } else {
-            return null;
+            return false;
         }
     }
 
@@ -205,7 +203,7 @@ class Db extends Beanstalk
      *   - total (sum of all)
      * @param string $filterTube Return only data regarding a given tube
      * @return array[]
-     * @todo missing "urgent" count
+     * @todo turn this into an ArrayObject as well, so we get property hints
      */
     public function stats($filterTube = null)
     {
@@ -231,22 +229,33 @@ class Db extends Beanstalk
 
         $result = $query->execute();
 
-        $structure = [
-            Job::ST_BURIED   => 0,
-            Job::ST_DELAYED  => 0,
-            Job::ST_READY    => 0,
-            Job::ST_RESERVED => 0,
-            'total'          => 0,
-            Job::ST_URGENT   => 0,
-        ];
-        $stats     = (!$filterTube) ? ['all' => $structure] : [];
+        $structure = function ($name) {
+            return [
+                Job::ST_BURIED   => 0,
+                Job::ST_DELAYED  => 0,
+                'name'           => $name,
+                Job::ST_READY    => 0,
+                Job::ST_RESERVED => 0,
+                'total'          => 0,
+                Job::ST_URGENT   => 0,
+            ];
+        };
+
+        if ($filterTube) {
+            $stats = ($filterTube == $this->using)? [$this->using => $structure($this->using)] : [];
+        } else {
+            $stats = [
+                'all'        => $structure('all'),
+                $this->using => $structure($this->using),
+            ];
+        }
         foreach ($result->toArray() as $entry) {
             $tube  = $entry['tube'];
             $total = $entry['total'];
             unset($entry['total'], $entry['tube']);
 
             if (!array_key_exists($tube, $stats)) {
-                $stats[$tube] = $structure;
+                $stats[$tube] = $structure($tube);
             }
 
             $entry  = array_filter($entry); //leaves only the status that has a value
@@ -321,7 +330,7 @@ class Db extends Beanstalk
             'order'      => 'priority ASC, id ASC',
         ]);
 
-        return $job? new Job($this, $job) : null;
+        return $job? new Job($this, $job) : false;
     }
 
     /**

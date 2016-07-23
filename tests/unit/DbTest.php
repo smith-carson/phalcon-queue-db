@@ -21,6 +21,7 @@ class DbTest extends \Codeception\TestCase\Test
         'all'              => [
             'buried'   => 1,
             'delayed'  => 1,
+            'name'     => 'all',
             'ready'    => 6,
             'reserved' => 1,
             'urgent'   => 1,
@@ -29,6 +30,7 @@ class DbTest extends \Codeception\TestCase\Test
         self::TUBE_ARRAY   => [
             'buried'   => 0,
             'delayed'  => 0,
+            'name'     => self::TUBE_ARRAY,
             'ready'    => 1,
             'reserved' => 0,
             'urgent'   => 0,
@@ -37,6 +39,7 @@ class DbTest extends \Codeception\TestCase\Test
         self::TUBE_DEFAULT => [
             'buried'   => 1,
             'delayed'  => 1,
+            'name'     => self::TUBE_DEFAULT,
             'ready'    => 3,
             'reserved' => 1,
             'urgent'   => 1,
@@ -45,6 +48,7 @@ class DbTest extends \Codeception\TestCase\Test
         self::TUBE_INT     => [
             'buried'   => 0,
             'delayed'  => 0,
+            'name'     => self::TUBE_INT,
             'ready'    => 1,
             'reserved' => 0,
             'urgent'   => 0,
@@ -53,6 +57,7 @@ class DbTest extends \Codeception\TestCase\Test
         self::TUBE_JSON    => [
             'buried'   => 0,
             'delayed'  => 0,
+            'name'     => self::TUBE_JSON,
             'ready'    => 1,
             'reserved' => 0,
             'urgent'   => 0,
@@ -72,9 +77,7 @@ class DbTest extends \Codeception\TestCase\Test
         if (isset($annotations['db'])) {
             switch ($annotations['db'][0]) {
                 case 'empty':
-                    /** @var \PDO $pdo */
-                    $pdo = $this->getModule('Db')->dbh;
-                    $pdo->exec('DELETE FROM jobs');
+                    $this->getModule('Db')->dbh->exec('DELETE FROM jobs');
                     break;
             }
         }
@@ -120,7 +123,7 @@ class DbTest extends \Codeception\TestCase\Test
         $id  = $this->queue->put('special');
         $job = $this->queue->peek($id);
         $this->assertInstanceOf(Job::class, $job);
-        $this->assertEquals($tube, $job->stats()['tube']);
+        $this->assertEquals($tube, $job->stats()->tube);
     }
 
     /** @depends testReserve */
@@ -130,14 +133,14 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($this->queue->watching(), [self::TUBE_DEFAULT]);
         $job = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $job);
-        $this->assertEquals(self::TUBE_DEFAULT, $job->stats()['tube']);
+        $this->assertEquals(self::TUBE_DEFAULT, $job->stats()->tube);
 
         //watches "array" tube only
         $this->queue->watch(self::TUBE_ARRAY, true);
         $this->assertEquals($this->queue->watching(), [self::TUBE_ARRAY]);
         $array = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
-        $this->assertEquals(self::TUBE_ARRAY, $array->stats()['tube']);
+        $this->assertEquals(self::TUBE_ARRAY, $array->stats()->tube);
 
         //watches also "int" tube
         $this->queue->watch(self::TUBE_INT);
@@ -146,8 +149,8 @@ class DbTest extends \Codeception\TestCase\Test
         $int   = $this->queue->peekReady();
         $this->assertInstanceOf(Job::class, $array);
         $this->assertInstanceOf(Job::class, $int);
-        $this->assertEquals(self::TUBE_ARRAY, $array->stats()['tube']);
-        $this->assertEquals(self::TUBE_INT, $int->stats()['tube']);
+        $this->assertEquals(self::TUBE_ARRAY, $array->stats()->tube);
+        $this->assertEquals(self::TUBE_INT, $int->stats()->tube);
     }
 
     /** @depends testWatch */
@@ -211,11 +214,10 @@ class DbTest extends \Codeception\TestCase\Test
         $id = $this->queue->put($body, [Db::OPT_PRIORITY => $priority]);
         $this->assertInternalType('int', $id);
 
-        //verifies if the job information is correct
-        $job   = $this->queue->peek($id);
-        $stats = $job->stats();
+        //verifies the job information is correct
+        $job = $this->queue->peek($id);
         $this->assertEquals($body, $job->getBody());
-        $this->assertEquals($priority, $stats['priority']);
+        $this->assertEquals($priority, $job->stats()->priority);
     }
 
     /**
@@ -236,18 +238,28 @@ class DbTest extends \Codeception\TestCase\Test
         $job   = $this->queue->peek($id);
         $stats = $job->stats();
         $this->assertEquals($body, $job->getBody());
-        $this->assertEquals($delay, $stats['delay']);
-        $this->assertEquals($start+$delay, $stats['delayed_until']);
+        $this->assertEquals($delay, $stats->delay);
+        $this->assertEquals($start+$delay, $stats->delayedUntil);
     }
 
     /**
      * @depends testPutPriority
      * @depends testPutDelay
+     * @depends testPeek
      */
     public function testPutAllTogetherNow()
     {
         //verifies all properties are being correctly set all at once - their behaviour is verified in the other tests
-        $this->markTestIncomplete();
+        $body     = 'all together now';
+        $delay    = 10;
+        $priority = Job::PRIORITY_LOWEST;
+
+        $id    = $this->queue->put($body, [Db::OPT_DELAY => $delay, Db::OPT_PRIORITY => $priority]);
+        $job   = $this->queue->peek($id);
+        $stats = $job->stats();
+        $this->assertEquals($body, $job->getBody());
+        $this->assertEquals($delay, $stats->delay);
+        $this->assertEquals($priority, $stats->priority);
     }
 
     /** @depends testPeekReady */
@@ -269,7 +281,7 @@ class DbTest extends \Codeception\TestCase\Test
         //chooses a tube that has only one job available and tries to reserve two
         $this->queue->watch(self::TUBE_ARRAY, true);
         $this->queue->reserve();
-        $this->assertNull($this->queue->reserve());
+        $this->assertFalse($this->queue->reserve());
     }
 
     /** @depends testReserve */
@@ -282,7 +294,7 @@ class DbTest extends \Codeception\TestCase\Test
         //tests timeout on a reserve operation
         $time = time();
         $nothing = $this->queue->reserve($timeout = 2);
-        $this->assertNull($nothing);
+        $this->assertFalse($nothing);
         $this->assertEquals(time(), $time+$timeout, null, 1);
     }
 
@@ -303,10 +315,10 @@ class DbTest extends \Codeception\TestCase\Test
         $this->queue->watch($tube, true);
 
         $this->queue->put($body, [Db::OPT_DELAY => $delay]);
-        $this->assertNull($this->queue->reserve());     //gets nothing for now
+        $this->assertFalse($this->queue->reserve());     //gets nothing for now
         $job = $this->queue->reserve($delay);           //then, after two seconds...
         $this->assertInstanceOf(Job::class, $job);      //...it gets a job...
-        $this->assertEquals(0, $job->stats()['delay']); //...with the correct values :D
+        $this->assertEquals(0, $job->stats()->delay);   //...with the correct values :D
         $this->assertEquals($body, $job->getBody());
     }
 
@@ -350,8 +362,8 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($job->getBody(), 'delayed until later');
 
         $stats = $job->stats();
-        $this->assertEquals($stats['state'], Job::ST_DELAYED);
-        $this->assertGreaterThan(time(), $stats['delayed_until']);
-        $this->assertGreaterThan(0, $stats['delay']);
+        $this->assertEquals($stats->state, Job::ST_DELAYED);
+        $this->assertGreaterThan(time(), $stats->delayedUntil);
+        $this->assertGreaterThan(0, $stats->delay);
     }
 }

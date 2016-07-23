@@ -1,5 +1,6 @@
 <?php namespace Phalcon\Queue\Db;
 use Phalcon\Queue\Db;
+use Phalcon\Queue\Db\Job\Stats;
 use Phalcon\Queue\Db\Model as JobModel;
 
 /**
@@ -136,7 +137,9 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
         }
     }
 
-    /** @todo turn this into a fancy object with ArrayAccess */
+    /**
+     * @return Stats
+     */
     public function stats()
     {
         if ($this->deleted) {
@@ -144,16 +147,16 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
         }
         $model = $this->model;
         $delay = $model->delay - time();
-        return [
-            'age'           => time() - $model->created_at,
+        return new Stats([
             'id'            => $this->getId(),
+            'age'           => time() - $model->created_at,
             'state'         => $this->getState(),
             'tube'          => $model->tube,
             'delay'         => ($delay > 0)? $delay : 0,
             'delayed_until' => (int)$model->delay,
             'priority'      => (int)$model->priority,
             'priority_text' => $model->priorityText(),
-        ];
+        ]);
     }
 
     public function __sleep()

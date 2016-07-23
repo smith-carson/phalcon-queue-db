@@ -14,12 +14,15 @@ class OriginalTest extends \Codeception\TestCase\Test
     {
         try {
             $this->queue = new Phalcon\Queue\Db();
-            @$this->queue->connect();
+            $this->queue->connect();
         } catch (Exception $e) {
             $this->markTestSkipped($e->getMessage());
 
             return;
         }
+
+        //we don't need any existing job in the table for this class
+        $this->getModule('Db')->dbh->exec('DELETE FROM jobs');
     }
 
     public function testBasic()
@@ -37,20 +40,20 @@ class OriginalTest extends \Codeception\TestCase\Test
 
     public function testReleaseKickBury()
     {
-        $this->assertTrue($this->queue->choose('beanstalk-test') !== false);
+        $this->assertNotFalse($this->queue->choose('beanstalk-test'));
 
         $task = 'doSomething';
 
-        $this->assertTrue($this->queue->put($task) !== false);
+        $this->assertNotFalse($this->queue->put($task));
 
-        $this->assertTrue($this->queue->watch('beanstalk-test') !== false);
+        $this->assertNotFalse($this->queue->watch('beanstalk-test'));
 
         $job = $this->queue->reserve(0);
 
         $this->assertInstanceOf(Job::class, $job);
         $this->assertEquals($task, $job->getBody());
 
-        $this->assertTrue($job->touch());
+//        $this->assertTrue($job->touch());
 
         // Release the job; it moves to the ready queue
         $this->assertTrue($job->release());
@@ -66,41 +69,38 @@ class OriginalTest extends \Codeception\TestCase\Test
         $this->assertInstanceOf(Job::class, $job);
         $this->assertEquals($task, $job->getBody());
 
-        // Kick the job, it should move to the ready queue again
-        // kick-job is supported since 1.8
-        if (false !== $job->kick()) {
-            $job = $this->queue->peekReady();
+        $this->assertTrue($job->kick());
+        $job = $this->queue->peekReady();
 
-            $this->assertInstanceOf(Job::class, $job);
-            $this->assertEquals($task, $job->getBody());
-        }
+        $this->assertInstanceOf(Job::class, $job);
+        $this->assertEquals($task, $job->getBody());
 
         $this->assertTrue($job->delete());
     }
 
     public function testStats()
     {
-        $this->assertTrue($this->queue->choose('beanstalk-test') !== false);
+        $this->assertNotFalse($this->queue->choose('beanstalk-test'));
 
         $queueStats = $this->queue->stats();
-        $this->assertTrue(is_array($queueStats));
+        $this->assertInternalType('array', $queueStats);
 
         $tubeStats = $this->queue->statsTube('beanstalk-test');
-        $this->assertTrue(is_array($tubeStats));
-        $this->assertTrue($tubeStats['name'] === 'beanstalk-test');
+        $this->assertInternalType('array', $tubeStats);
+        $this->assertEquals('beanstalk-test', $tubeStats['name']);
 
-        $this->assertTrue($this->queue->statsTube('beanstalk-test-does-not-exist') === false);
+        $this->assertFalse($this->queue->statsTube('beanstalk-test-does-not-exist'));
 
-        $this->assertTrue($this->queue->choose('beanstalk-test') !== false);
+        $this->assertNotFalse($this->queue->choose('beanstalk-test'));
 
         $this->queue->put('doSomething');
 
         $this->queue->watch('beanstalk-test');
 
         $job      = $this->queue->peekReady();
-        $jobStats = $job->stats();
+        $jobStats = (array)$job->stats(); //there's no way for an ArrayObject be defined as scalar array, so...
 
-        $this->assertTrue(is_array($jobStats));
-        $this->assertTrue($jobStats['tube'] === 'beanstalk-test');
+        $this->assertInternalType('array', $jobStats);
+        $this->assertEquals('beanstalk-test', $jobStats['tube']);
     }
 }

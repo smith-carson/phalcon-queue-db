@@ -363,11 +363,23 @@ class Db extends Beanstalk
     /**
      * Kicks back into the queue $number buried jobs (at least one).
      * @param int $number
-     * @return int total of actually kicked jobs
+     * @return bool|int total of actually kicked jobs, or false on failure
      */
     public function kick($number = 1)
     {
+        //from the Beanstalk tutorial: "Buried jobs are maintained in a special FIFO-queue outside of
+        //  the normal job processing lifecycle until they are kicked alive again"
+        //  so, there's no need to filter by tubes or use special order
+        //TODO: actually, to make it perfect we would need to store the timestamp the job was buried and order by it
+        $entries = JobModel::query()
+            ->where('buried = 1')
+            ->orderBy('id DESC')
+            ->limit($number)
+            ->execute();
+        $total   = sizeof($entries);
+        $updated = $entries->update(['buried' => 0]);
 
+        return $updated? $total : false;
     }
 
     public function __sleep()

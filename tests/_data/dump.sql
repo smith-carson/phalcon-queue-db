@@ -14,6 +14,8 @@ CREATE TABLE jobs (
 INSERT INTO jobs (tube, body, delay) VALUES ('default', 's:19:"delayed until later";', 1893466800);
 INSERT INTO jobs (tube, body, delay) VALUES ('default', 's:18:"delay have expired";', 1420081200);
 INSERT INTO jobs (tube, body, buried) VALUES ('default', 's:6:"buried";', 1);
+INSERT INTO jobs (tube, body, buried) VALUES ('default', 's:7:"buried2";', 1);
+INSERT INTO jobs (tube, body, buried) VALUES ('default', 's:7:"buried3";', 1);
 INSERT INTO jobs (tube, body, reserved) VALUES ('default', 's:8:"reserved";', 1);
 INSERT INTO jobs (tube, body, priority) VALUES ('default', 's:8:"priority";', 10);
 --INSERT INTO jobs (tube, body, ttr) VALUES ('default', 's:3:"ttr";', 5);

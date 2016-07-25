@@ -19,13 +19,13 @@ class DbTest extends \Codeception\TestCase\Test
 
     public static $stats = [
         'all'              => [
-            'buried'   => 1,
+            'buried'   => 3,
             'delayed'  => 1,
             'name'     => 'all',
             'ready'    => 6,
             'reserved' => 1,
             'urgent'   => 1,
-            'total'    => 10,
+            'total'    => 12,
         ],
         self::TUBE_ARRAY   => [
             'buried'   => 0,
@@ -37,13 +37,13 @@ class DbTest extends \Codeception\TestCase\Test
             'total'    => 1,
         ],
         self::TUBE_DEFAULT => [
-            'buried'   => 1,
+            'buried'   => 3,
             'delayed'  => 1,
             'name'     => self::TUBE_DEFAULT,
             'ready'    => 3,
             'reserved' => 1,
             'urgent'   => 1,
-            'total'    => 7,
+            'total'    => 9,
         ],
         self::TUBE_INT     => [
             'buried'   => 0,
@@ -366,4 +366,17 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertGreaterThan(time(), $stats->delayedUntil);
         $this->assertGreaterThan(0, $stats->delay);
     }
+
+    /** @depends testStatsTube */
+    public function testKick()
+    {
+        //kicks all buried jobs but one, and sees if the updated stats reflect this
+        $this->queue->kick($this->queue->statsTube()['buried'] - 1);
+        $this->assertEquals(1, $this->queue->statsTube()['buried']);
+
+        //then, sees if kicking more than we currently have will also behave as expected
+        $kicked = $this->queue->kick(4);
+        $this->assertEquals(1, $kicked);
+    }
+
 }

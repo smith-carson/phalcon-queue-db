@@ -25,6 +25,12 @@ class Model extends \Phalcon\Mvc\Model
 
     public function getSource() { return 'jobs'; }
 
+    public function initialize()
+    {
+        //FIXME: it seems the release procedure fails with this enabled x_x
+//        $this->useDynamicUpdate(true);
+    }
+
     public function beforeCreate()
     {
         $this->created_at = time();

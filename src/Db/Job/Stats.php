@@ -26,7 +26,10 @@ class Stats extends \ArrayObject
         parent::__construct($finalInput, $flags, $iteratorClass);
     }
 
-    public function __get($key) { return $this->offsetGet($key); }
+    public function __get($key)
+    {
+        return $this->offsetGet($key);
+    }
 
     public function offsetExists($offset)
     {
@@ -39,13 +42,6 @@ class Stats extends \ArrayObject
         return $this->offsetExists($offset) ? parent::offsetGet($offset) : null;
     }
 
-    private static function ro() { throw new \OverflowException('Queue\Db\Job\Stats is a read-only class'); }
-
-    public function append($offset) { self::ro(); }
-    public function exchangeArray($input) { self::ro(); }
-    public function offsetSet($offset, $value) { self::ro(); }
-    public function offsetUnset($offset) { self::ro(); }
-
     private function correctCase($key)
     {
         if (strpos($key, '_')) {
@@ -53,5 +49,30 @@ class Stats extends \ArrayObject
         } else {
             return $key;
         }
+    }
+
+    private static function ro()
+    {
+        throw new \OverflowException('Queue\Db\Job\Stats is a read-only class');
+    }
+
+    public function append($offset)
+    {
+        self::ro();
+    }
+
+    public function exchangeArray($input)
+    {
+        self::ro();
+    }
+
+    public function offsetSet($offset, $value)
+    {
+        self::ro();
+    }
+
+    public function offsetUnset($offset)
+    {
+        self::ro();
     }
 }

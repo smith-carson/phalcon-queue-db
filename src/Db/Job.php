@@ -1,4 +1,5 @@
 <?php namespace Phalcon\Queue\Db;
+
 use Phalcon\Queue\Db;
 use Phalcon\Queue\Db\Job\Stats;
 use Phalcon\Queue\Db\Model as JobModel;
@@ -38,7 +39,10 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
         $this->setModel($model);
     }
 
-    protected function setModel(JobModel $model) { $this->model = $model; }
+    protected function setModel(JobModel $model)
+    {
+        $this->model = $model;
+    }
 
     /**
      * @return JobModel
@@ -94,7 +98,7 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
     {
         $data = [
             'reserved' => 0,
-            'delay'    => ($delay > 0)? time() + $delay : 0
+            'delay'    => ($delay > 0)? time() + $delay : 0,
         ];
         if ($priority) {
             $data['priority'] = $priority;
@@ -130,11 +134,7 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
             case self::ST_DELAYED: $payload = ['delay' => 0]; break; //FIXME: missing tests for kicking a delayed job!
         }
 
-        if ($payload) {
-            return $this->model->update($payload);
-        } else {
-            return true;
-        }
+        return $payload? $this->model->update($payload) : true;
     }
 
     /**

@@ -6,7 +6,6 @@ enabled:
   - align_double_arrow
   - align_equals
   - binary_operator_spaces
-  - blank_line_before_return
   - cast_spaces
   - concat_without_spaces
   - dir_constant
@@ -40,7 +39,6 @@ enabled:
   - ordered_imports
   - php_unit_construct
   - php_unit_dedicate_assert
-  - phpdoc_align
   - phpdoc_indent
   - phpdoc_no_access
   - phpdoc_no_package
@@ -67,4 +65,4 @@ enabled:
 
 finder:
   exclude:
-    - "tests/_support/_generated"
+    - "tests"

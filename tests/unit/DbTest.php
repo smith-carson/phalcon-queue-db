@@ -378,5 +378,4 @@ class DbTest extends \Codeception\TestCase\Test
         $kicked = $this->queue->kick(4);
         $this->assertEquals(1, $kicked);
     }
-
 }

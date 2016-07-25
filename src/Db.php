@@ -2,10 +2,11 @@
 
 use Phalcon\Di;
 use BadMethodCallException as BadMethod;
+use Phalcon\Mvc\Model\Resultset;
 use Phalcon\Queue\Db\Job;
 use Phalcon\Queue\Db\Model as JobModel;
 
-require_once __DIR__ . '/../tests/unit/DbTest.php';
+require_once __DIR__.'/../tests/unit/DbTest.php';
 
 /**
  * Tries to mimic Phalcon's Beanstalk Queue class for low-throughput queue needs
@@ -46,12 +47,6 @@ class Db extends Beanstalk
     const OPT_DELAY    = 'delay';
     const OPT_PRIORITY = 'priority';
 
-    const OPTIONS = [
-        self::OPT_DELAY,
-//        self::OPT_TTR,
-        self::OPT_PRIORITY,
-    ];
-
     /**
      * Queue manager constructor. Will connect upon creation.
      * By default, will look for a service called 'db'.
@@ -69,7 +64,8 @@ class Db extends Beanstalk
      * @see \Phalcon\Queue\Db::diServiceKey
      * @return boolean
      */
-    public function connect() {
+    public function connect()
+    {
         if (!$this->connection) {
             $this->connection = Di::getDefault()->get($this->diServiceKey);
         }
@@ -88,17 +84,17 @@ class Db extends Beanstalk
             $options[self::OPT_DELAY] += time();
         }
 
-        $payload = array_merge($options, [
+        $job = new JobModel();
+        $job->save(array_merge($options, [
             'body' => serialize($data),
-            'tube' => $this->using
-        ]);
-        $job     = new JobModel();
-        $job->save($payload);
+            'tube' => $this->using,
+        ]));
 
         return (int)$job->id;
     }
 
-    protected function simpleReserve() {
+    protected function simpleReserve()
+    {
         if ($job = $this->peekReady()) {
             $job->getModel()->update(['reserved' => 1]);
             return $job;
@@ -137,12 +133,13 @@ class Db extends Beanstalk
 
     /**
      * Change what tubes to watch for when getting jobs. The default value is "default".
-     * @param string|array $tube Name of one or more tubes to watch
-     * @param bool $replace If the current watch list should be replaced for this one, or just include these
+     * @param string|array $tube    Name of one or more tubes to watch
+     * @param bool         $replace If the current watch list should be replaced for this one, or just include these
      * @return string
      * @see \Phalcon\Queue\Db::watching()
      */
-    public function watch($tube, $replace = false) {
+    public function watch($tube, $replace = false)
+    {
         if ($replace) {
             $this->watching = (array)$tube;
         } else {
@@ -161,8 +158,10 @@ class Db extends Beanstalk
     public function ignore($tube)
     {
         if (sizeof($this->watching) > 1) {
-            $this->watching = array_values( //array_values() reindexes the filtered array
-                array_filter($this->watching, function($v) use ($tube) { return $v != $tube; })
+            $this->watching = array_values(//array_values() reindexes the filtered array
+                array_filter($this->watching, function ($v) use ($tube) {
+                    return $v != $tube;
+                })
             );
         }
         return $this->watching;
@@ -174,7 +173,10 @@ class Db extends Beanstalk
      * @see \Phalcon\Queue\Db::choose()
      * @see \Phalcon\Queue\Db::chosen()
      */
-    public function using() { return $this->using; }
+    public function using()
+    {
+        return $this->using;
+    }
 
     /**
      * Returns what tube is currently active to put jobs on.
@@ -183,24 +185,30 @@ class Db extends Beanstalk
      * @see \Phalcon\Queue\Db::choose()
      * @see \Phalcon\Queue\Db::using()
      */
-    public function chosen() { return $this->using(); }
+    public function chosen()
+    {
+        return $this->using();
+    }
 
     /**
      * Returns what tube(s) will be used to get jobs from.
      * @return array
      * @see \Phalcon\Queue\Db::watch()
      */
-    public function watching() { return $this->watching; }
+    public function watching()
+    {
+        return $this->watching;
+    }
 
     /**
      * Get stats of the open tubes.
-     * Each entry (keyed by tube) contains the following keys, pointing to the number of corresponding jobs on the
-     * table:
-     *   - buried (failed)
-     *   - delayed (going to be ready for work only later)
-     *   - ready (waiting for being worked on)
-     *   - reserved (being worked on)
-     *   - total (sum of all)
+     * Each entry (keyed by tube) contains the following keys, pointing to the number of
+     * corresponding jobs on the table:
+     *   - buried (failed);
+     *   - delayed (going to be ready for work only later);
+     *   - ready (waiting for being worked on);
+     *   - reserved (being worked on);
+     *   - total (sum of all).
      * @param string $filterTube Return only data regarding a given tube
      * @return array[]
      * @todo turn this into an ArrayObject as well, so we get property hints
@@ -242,7 +250,7 @@ class Db extends Beanstalk
         };
 
         if ($filterTube) {
-            $stats = ($filterTube == $this->using)? [$this->using => $structure($this->using)] : [];
+            $stats = ($filterTube == $this->using) ? [$this->using => $structure($this->using)] : [];
         } else {
             $stats = [
                 'all'        => $structure('all'),
@@ -274,17 +282,17 @@ class Db extends Beanstalk
     /**
      * Get stats of a tube. By default, gets from the currently active tube.
      * Returns an array with the following keys:
-     *   - buried (failed)
-     *   - delayed (going to be ready for work only later)
-     *   - ready (waiting for being worked on)
-     *   - reserved (being worked on)
-     *   - total (sum of all)
+     *   - buried (failed);
+     *   - delayed (going to be ready for work only later);
+     *   - ready (waiting for being worked on);
+     *   - reserved (being worked on);
+     *   - total (sum of all).
      * @param string $tube
      * @return array
      */
     public function statsTube($tube = null)
     {
-        return $this->stats($tube?: $this->using);
+        return $this->stats($tube ?: $this->using);
     }
 
     /**
@@ -330,7 +338,7 @@ class Db extends Beanstalk
             'order'      => 'priority ASC, id ASC',
         ]);
 
-        return $job? new Job($this, $job) : false;
+        return $job ? new Job($this, $job) : false;
     }
 
     /**
@@ -379,12 +387,12 @@ class Db extends Beanstalk
         $total   = sizeof($entries);
         $updated = $entries->update(['buried' => 0]);
 
-        return $updated? $total : false;
+        return $updated ? $total : false;
     }
 
     public function __sleep()
     {
-        return ['diServiceKey','using','watching'];
+        return ['diServiceKey', 'using', 'watching'];
     }
 
     public function __wakeup()
@@ -392,7 +400,18 @@ class Db extends Beanstalk
         $this->connect();
     }
 
-    public function read($length = 0) { throw new BadMethod('"read" is not a valid method in DB queues.'); }
-    protected function write($data) { throw new BadMethod('"write" is not a valid method in DB queues.'); }
-    public function disconnect() { throw new BadMethod('"disconnect" is not a valid method in DB queues.'); }
+    public function read($length = 0)
+    {
+        throw new BadMethod('"read" is not a valid method in DB queues.');
+    }
+
+    protected function write($data)
+    {
+        throw new BadMethod('"write" is not a valid method in DB queues.');
+    }
+
+    public function disconnect()
+    {
+        throw new BadMethod('"disconnect" is not a valid method in DB queues.');
+    }
 }

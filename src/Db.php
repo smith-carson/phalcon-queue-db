@@ -1,15 +1,14 @@
 <?php namespace Phalcon\Queue;
 
-use Phalcon\Di;
 use BadMethodCallException as BadMethod;
-use Phalcon\Mvc\Model\Resultset;
+use Phalcon\Di;
 use Phalcon\Queue\Db\Job;
 use Phalcon\Queue\Db\Model as JobModel;
 
 require_once __DIR__.'/../tests/unit/DbTest.php';
 
 /**
- * Tries to mimic Phalcon's Beanstalk Queue class for low-throughput queue needs
+ * Tries to mimic Phalcon's Beanstalk Queue class for low-throughput queue needs.
  *
  * <code>
  * $queue = new \Phalcon\Queue\Db();
@@ -24,7 +23,7 @@ class Db extends Beanstalk
     protected $connection;
 
     /**
-     * Used for the db connection
+     * Used for the db connection.
      * @var  string
      */
     protected $diServiceKey;
@@ -62,7 +61,7 @@ class Db extends Beanstalk
     /**
      * Opens a connection to the database, using dependency injection.
      * @see \Phalcon\Queue\Db::diServiceKey
-     * @return boolean
+     * @return bool
      */
     public function connect()
     {
@@ -73,7 +72,7 @@ class Db extends Beanstalk
     }
 
     /**
-     * Inserts jobs into the queue
+     * Inserts jobs into the queue.
      * @param mixed $data
      * @param array $options
      * @return string|bool
@@ -90,7 +89,7 @@ class Db extends Beanstalk
             'tube' => $this->using,
         ]));
 
-        return (int)$job->id;
+        return (int) $job->id;
     }
 
     protected function simpleReserve()
@@ -104,7 +103,7 @@ class Db extends Beanstalk
     }
 
     /**
-     * Reserves a job in the queue
+     * Reserves a job in the queue.
      * @param int $timeout How long to wait while pooling for a new job before returning
      * @return bool|\Phalcon\Queue\Db\Job
      */
@@ -128,7 +127,7 @@ class Db extends Beanstalk
      */
     public function choose($tube)
     {
-        return $this->using = (string)$tube;
+        return $this->using = (string) $tube;
     }
 
     /**
@@ -141,10 +140,10 @@ class Db extends Beanstalk
     public function watch($tube, $replace = false)
     {
         if ($replace) {
-            $this->watching = (array)$tube;
+            $this->watching = (array) $tube;
         } else {
             //merges, throws away repeated values, and re-indexes
-            $this->watching = array_values(array_unique(array_merge($this->watching, (array)$tube)));
+            $this->watching = array_values(array_unique(array_merge($this->watching, (array) $tube)));
         }
         return $this->watching;
     }
@@ -330,7 +329,7 @@ class Db extends Beanstalk
      */
     protected function queriedPeek($conditions, array $bind = [])
     {
-        $conditions = array_merge((array)$conditions, ['tube IN ({tubes:array})']);
+        $conditions = array_merge((array) $conditions, ['tube IN ({tubes:array})']);
 
         $job = JobModel::findFirst([
             'conditions' => implode(' AND ', $conditions),
@@ -351,7 +350,7 @@ class Db extends Beanstalk
     }
 
     /**
-     * Return the next job in the list of buried jobs
+     * Return the next job in the list of buried jobs.
      * @return bool|\Phalcon\Queue\Db\Job
      */
     public function peekBuried()

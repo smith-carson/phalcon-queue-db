@@ -45,7 +45,7 @@ class Model extends \Phalcon\Mvc\Model
             case Job::PRIORITY_HIGHEST: return 'highest';
             case Job::PRIORITY_MEDIUM: return 'medium';
             case Job::PRIORITY_LOWEST: return 'lowest';
-            default: return ($this->priority < Job::PRIORITY_MEDIUM)? 'high' : 'low';
+            default: return ($this->priority < Job::PRIORITY_MEDIUM) ? 'high' : 'low';
         }
     }
 }

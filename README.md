@@ -6,7 +6,7 @@ Phalcon package for Queue through the Database
 [![Latest Version](https://img.shields.io/packagist/v/igorsantos07/phalcon-queue-db.svg?style=flat-square)](https://github.com/igorsantos07/phalcon-queue-db/releases)
 [![Software License](https://img.shields.io/packagist/l/igorsantos07/phalcon-queue-db.svg?style=flat-square)](docs/LICENSE.md)
 
-This package sits side by side with [\Phalcon\Queue\Beanstalk`][original] as a
+This package sits side by side with [`\Phalcon\Queue\Beanstalk`][original] as a
 way to provide job queuing for those who don't want to bother with installing
 and maintaining a Beanstalk server.
 
@@ -40,15 +40,17 @@ by the original class, but we didn't follow some strict behaviours of Beanstalk
 as the base class didn't follow as well - we're striving for additional features
 without the cost of backwards compatibility.
 
+<!-- separating blockquotes -->
+
 > For the following samples, consider the following `uses`:
->
->     use \Phalcon\Queue\Db as DbQueue;
->     use \Phalcon\Queue\Db\Job as Job;
->
+> ```php
+> use \Phalcon\Queue\Db as DbQueue;
+> use \Phalcon\Queue\Db\Job as Job;
+> ```
 
 ### Job queuing
 
-#### 1. The actual queue
+#### The actual queue
 To get the queue object, simply instantiate it. The sole argument is your
 database connection name, as found in Phalcon DI - the default is `db`.
 You may want to set the queue itself in your Dependency Injection container
@@ -57,7 +59,7 @@ as well.
     $queue = new DbQueue(); //gets a database connection named db from the DI
     $outsiderQueue = new DbQueue('weird_db'); another queue, in another db?
 
-#### 2. Adding stuff to the queue
+#### Adding stuff to the queue
 So, there's something you want to do later. Let's say you need to send a bunch
 of emails all at once, and that would take a while if happened during the user
 request. We have the concept of "job tubes", as in separate tubes get different
@@ -65,19 +67,24 @@ types of jobs, allowing you to have specialized workers for each type of job.
 
 If no tube is specified, the default one is called... you guessed it, "default".
 
-    class ImportantController {
-        function veryImportantAction()
-        {
-            //do some stuff and ends up with an email list
-            //instead of sending all those emails from the user request,
-            //we are going to hand this job to a worker
-            $queue = new DbQueue();
-            $queue->choose('email_notification'); //sets the tube we'll be using
-            $queue->put($emailList);
+```php
+class ImportantController {
 
-            //tell the user to be happy because stuff went ok
-        }
+    function veryImportantAction()
+    {
+        // Do some stuff and ends up with an emails array.
+        
+        // Instead of sending all those emails from the user request,
+        // we are going to hand this job to a worker.
+        $queue = new DbQueue();
+        $queue->choose('email_notification'); //sets the tube we'll be using
+        $queue->put($emailList);
+
+        //tell the user to be happy because stuff went ok
     }
+    
+}
+```
 
 Some useful pieces of code in this phase are:
 
@@ -89,16 +96,18 @@ Some useful pieces of code in this phase are:
 for the job body to be a string. As long as you give the job something
 serializable, you're good to go.
 
-#### 3. Job options
+#### Job options
 It's also possible to define some specific options for jobs.
 
 > We'll see how those interact in the next section, about retrieving jobs and
 working on them.
 
-    //adds a job on top of the queue
-    $queue->put($bossEmails, [DbQueue::OPT_PRIORITY => Job::PRIORITY_HIGHEST]);
-    //adds a job to be ran only later (in seconds)
-    $queue->put($taskReminder, [DbQueue::OPT_DELAY => 60 * 10]);
+```php
+//adds a job on top of the queue
+$queue->put($bossEmails, [DbQueue::OPT_PRIORITY => Job::PRIORITY_HIGHEST]);
+//adds a job to be ran only later (in seconds)
+$queue->put($taskReminder, [DbQueue::OPT_DELAY => 60 * 10]);
+```
 
 There are a couple of constants in the `Job` class that define other priority
 presets. If no priority is given, the default one is `Job::PRIORITY_MEDIUM`.
@@ -109,16 +118,18 @@ From your command-line script (herein called _worker_), you can process jobs by
 using peek or reserve methods on the queue. Peek jobs are advised only for
 verifications and maintenance: actual work should be made on reserved jobs only.
 
-    $queue->watch('email_notification');
-    while ($job = $queue->reserve()) {
-        $payload = $job->getBody();
-        //do stuff with the payload
-        if ($worked) {
-            $job->delete();
-        } else {
-            $job->bury();
-        }
+```php
+$queue->watch('email_notification');
+while ($job = $queue->reserve()) {
+    $payload = $job->getBody();
+    //do stuff with the payload
+    if ($worked) {
+        $job->delete();
+    } else {
+        $job->bury();
     }
+}
+```
 
 Useful bits here:
 
@@ -191,5 +202,60 @@ database table. That said, you'll hardly ever need that.
 Well, if you do need, you can retrieve the model related to a job by using
 `Job::getModel()`, or by using the `Db\Model` class directly.
 
+
+Main differences from the original implementations
+--------------------------------------------------
+This is a non-exhaustive list of what changed between the original Beanstalk
+client, Phalcon's one, and our final implementation of a cool queue system.
+
+### From the basic Beanstalk client
+> The implementation reference here was [Python's Beanstalkc][beanstalk-tutorial]
+
+- no need for the body to be a string. It's serialized upon storage and
+  unserialized before retrieval, maintaining it's exact structure and type;
+- Job workflow is not followed strictly as Phalcon itself didn't follow as well,
+  and we wanted to keep at least some backwards-compat so people could migrate
+  from one to the other without much headaches. For instance, it is possible
+  to delete a non-reserved job, as that's what the current Phalcon doc
+  suggests :expressionless:
+- There's still no TTR/`touch()` implementation. See [issue #2][issue-2].
+
+### From Phalcon's `Queue\Beanstalk`
+A couple of features were added, both to comply with the original Beanstalk
+client and to keep in line with other queuing systems found in PHP, such as
+Laravel's. There's a specific test (`tests/unit/OriginalTest.php`) that mimics
+the queue test from Phalcon codebase.
+
+Keep in mind that some things here might also be an addition in comparison with
+the original client.
+
+
+- depends on the default DI container to get the database connection. Thus,
+  related methods such as `connect()` and `disconnect() have changed: the first
+  is called directly inside the constructor, and the other throws an exception
+  as there's no real value on manually disconnecting from the Queue;
+- Obvious addition of `getModel()`, as the original one has no relation with
+  models;
+- added `getState()` so we can get the job state without querying all its stats;
+- `getStats()` also indicates a human-readable description of the priority and
+  timestamp when the job will be considered ready (`delayed_until`). Also, it's
+  not exactly an array but instead an ArrayAccess object, thus enabling
+  code-completion hints in your favourite IDE;
+- added several constants to help with defining job options, state and
+  priorities;
+- added several methods to comply with the original client, like:
+    - `watch()` includes a string/array `$tubes` arg and a `$replace` bool;
+    - `ignore()` to un-watch;
+    - `peek()` to get a specific job;
+    - `kick()` to kick several jobs at once;
+    - `using()`, `watching()` and `chosen()` to see what's being used or
+      watched. _The original client calls `choose()` by `use()`, but that's not
+      possible on PHP < 7 because of keyword restriction;_
+- low-level methods such as `read()` and `write()` throw exceptions, as they
+  have no meaning in a database-backed library.
+      
+  
+
 [original]: https://docs.phalconphp.com/en/latest/reference/queue.html
 [beanstalk-tutorial]: https://github.com/earl/beanstalkc/blob/master/TUTORIAL.mkd
+[issue-2]: https://github.com/igorsantos07/phalcon-queue-db/issues/2

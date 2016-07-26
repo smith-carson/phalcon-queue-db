@@ -224,6 +224,19 @@ class DbTest extends \Codeception\TestCase\Test
      * @depends testPut
      * @depends testPeek
      */
+    public function testPutPriorityLimits()
+    {
+        $id  = $this->queue->put('x', [Db::OPT_PRIORITY => Job::PRIORITY_HIGHEST]);
+        $this->assertEquals(Job::PRIORITY_HIGHEST, $this->queue->peek($id)->stats()->priority);
+
+        $id  = $this->queue->put('x', [Db::OPT_PRIORITY => Job::PRIORITY_LOWEST]);
+        $this->assertEquals(Job::PRIORITY_LOWEST, $this->queue->peek($id)->stats()->priority);
+    }
+
+    /**
+     * @depends testPut
+     * @depends testPeek
+     */
     public function testPutDelay()
     {
         $body  = 'delayed';
@@ -322,13 +335,27 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($body, $job->getBody());
     }
 
-    /** @depends testReserve */
+    /**
+     * @db empty
+     * @depends testPut
+     * @depends testReserve
+     */
     public function testReservePrioritized()
     {
         $this->queue->put($urgent = 'URGENT', [Db::OPT_PRIORITY => Job::PRIORITY_HIGHEST]);
         $this->queue->put($almost = 'ALMOST', [Db::OPT_PRIORITY => Job::PRIORITY_HIGHEST + 1]);
+        $this->queue->put($normal = 'NORMAL', [Db::OPT_PRIORITY => Job::PRIORITY_DEFAULT]);
+        $this->queue->put($medium = 'MEDIUM', [Db::OPT_PRIORITY => Job::PRIORITY_MEDIUM]);
+        $this->queue->put($lowest = 'LOWEST', [Db::OPT_PRIORITY => Job::PRIORITY_LOWEST]);
         $this->assertEquals($urgent, $this->queue->reserve()->getBody());
         $this->assertEquals($almost, $this->queue->reserve()->getBody());
+        $this->assertEquals($normal, $this->queue->reserve()->getBody());
+        $this->assertEquals($medium, $this->queue->reserve()->getBody());
+        $this->assertEquals($lowest, $this->queue->reserve()->getBody());
+    }
+    public function testReserveLowPriority()
+    {
+        $this->queue->put($common = 'common priority', [Db::OPT_PRIORITY => Job::PRIORITY_DEFAULT]);
     }
 
     public function testPeek()

@@ -5,8 +5,6 @@ use Phalcon\Di;
 use Phalcon\Queue\Db\Job;
 use Phalcon\Queue\Db\Model as JobModel;
 
-require_once __DIR__.'/../tests/unit/DbTest.php';
-
 /**
  * Tries to mimic Phalcon's Beanstalk Queue class for low-throughput queue needs.
  *

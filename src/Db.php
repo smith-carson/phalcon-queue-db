@@ -77,8 +77,12 @@ class Db extends Beanstalk
      * @param array $options
      * @return string|bool
      */
-    public function put($data, $options = [])
+    public function put($data, array $options = null)
     {
+        if (!$options) {
+            $options = [];
+        }
+
         if (isset($options[self::OPT_DELAY])) { //delay is given in secs, but stored in the database as timestamp to run
             $options[self::OPT_DELAY] += time();
         }

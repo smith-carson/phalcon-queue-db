@@ -34,7 +34,7 @@ class Model extends \Phalcon\Mvc\Model
 //        $this->useDynamicUpdate(true);
     }
 
-    public function beforeCreate()
+    public function beforeValidationOnCreate()
     {
         $this->created_at = time();
     }

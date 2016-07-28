@@ -2,6 +2,7 @@
 
 use BadMethodCallException as BadMethod;
 use Phalcon\Di;
+use Phalcon\Queue\Db\InvalidJobOperationException;
 use Phalcon\Queue\Db\Job;
 use Phalcon\Queue\Db\Model as JobModel;
 
@@ -73,6 +74,7 @@ class Db extends Beanstalk
      * Inserts jobs into the queue.
      * @param mixed $data
      * @param array $options
+     * @throws InvalidJobOperationException In case there's an error with the put operation
      * @return string|bool
      */
     public function put($data, array $options = null)
@@ -85,13 +87,18 @@ class Db extends Beanstalk
             $options[self::OPT_DELAY] += time();
         }
 
-        $job = new JobModel();
-        $job->save(array_merge($options, [
+        $payload = array_merge($options, [
             'body' => serialize($data),
             'tube' => $this->using,
-        ]));
+        ]);
 
-        return (int) $job->id;
+        $job   = new JobModel();
+        if ($job->save($payload)) {
+            return (int) $job->id;
+        } else {
+            $messages = implode(' / ', $job->getMessages());
+            throw new InvalidJobOperationException($messages, null);
+        }
     }
 
     protected function simpleReserve()

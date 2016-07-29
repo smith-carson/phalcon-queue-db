@@ -73,6 +73,7 @@ class JobTest extends \Codeception\TestCase\Test
     /** @depends testGetState */
     public function testStats()
     {
+        require_once 'DbTest.php'; //uses its constants down there
         $stats = $this->getAJob()->stats();
 
         //this piece down here checks for backwards compatibility with the original return of Beanstalk\Job::stats()
@@ -105,6 +106,7 @@ class JobTest extends \Codeception\TestCase\Test
     {
         $job = $this->getAJob('buried = 1 OR reserved = 1');
         $job->delete();
+        $this->assertEquals(Job::ST_DELETED, $job->getState());
         $this->tester->expectException(InvalidJobOperation::class, function() use ($job) { $job->stats(); });
     }
 

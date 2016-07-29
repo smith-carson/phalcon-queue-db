@@ -113,19 +113,53 @@ class Db extends Beanstalk
 
     /**
      * Reserves a job in the queue.
-     * @param int $timeout How long to wait while pooling for a new job before returning
+     * @param int $timeout How much time to spend in this function while pooling for jobs
+     * @param int $pool    How long to wait while pooling for a new job before returning
      * @return bool|\Phalcon\Queue\Db\Job
      */
-    public function reserve($timeout = 0)
+    public function reserve($timeout = 0, $pool = 1)
     {
-        $job = $this->simpleReserve();
+        //we only need to calculate the ending time if there's a timeout requirement
+        $end = ($timeout > 0) ? time() + $timeout : -1;
 
-        if (!$job && $timeout > 0) { //tries again after a couple of seconds
-            sleep($timeout);
-            $job = $this->simpleReserve();
+        //while we got no job, and timeout is set but won't be achieved with a new sleep, sleep and try to get a new job
+        while (!($job = $this->simpleReserve()) && ($timeout > 0 && time() + $pool <= $end)) {
+            sleep($pool);
         }
 
+        //got it! return
         return $job;
+    }
+
+    /**
+     * Takes a callable and uses it to work through all jobs.
+     * Releases the job if the worker returns nothing (null); if truthy, deletes it (meaning the job finished
+     * successfully), and if returns falsy, buries the job.
+     *
+     * <code>
+     * $queue->process(function($body, $job) uses ($mailer) {
+     *     $worked = $mailer->to($body['to'])->send($body['message']);
+     *     return $worked;
+     * });
+     * </code>
+     *
+     * @param callable $worker Something to process a job. Signature: function(mixed $worker, Job $job):bool
+     * @param int      $pool   How long to wait until pooling for new jobs, in seconds.
+     * @param int      $limit  Limit of jobs to process before exiting
+     */
+    public function process(callable $worker, $pool = 1, $limit = PHP_INT_MAX)
+    {
+        $processed = 0;
+        while ($processed++ < $limit && ($job = $this->reserve(0, $pool))) {
+            $result = $worker($job->getBody(), $job);
+            if ($result) {
+                $job->delete();
+            } elseif ($result === null) {
+                $job->release();
+            } else {
+                $job->bury();
+            }
+        }
     }
 
     /**
@@ -322,12 +356,16 @@ class Db extends Beanstalk
     /**
      * Peeks into a specific job.
      * @param int $id
-     * @return null|\Phalcon\Queue\Db\Job
+     * @return false|\Phalcon\Queue\Db\Job
      */
     public function peek($id)
     {
-        $job = JobModel::findFirst($id);
-        return new Job($this, $job);
+        if ($job = JobModel::findFirst($id)) {
+            return new Job($this, $job);
+        } else {
+            return false;
+        }
+
     }
 
     /**
@@ -355,7 +393,7 @@ class Db extends Beanstalk
      */
     public function peekReady()
     {
-        return $this->queriedPeek(['delay <= :now:', 'reserved = 0'], ['now' => time()]);
+        return $this->queriedPeek(['delay <= :now:', 'reserved = 0', 'buried = 0'], ['now' => time()]);
     }
 
     /**

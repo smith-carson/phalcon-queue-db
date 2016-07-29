@@ -124,6 +124,9 @@ class DbTest extends \Codeception\TestCase\Test
         $job = $this->queue->peek($id);
         $this->assertInstanceOf(Job::class, $job);
         $this->assertEquals($tube, $job->stats()->tube);
+
+        $this->assertEquals($tube, $this->queue->using());
+        $this->assertEquals($tube, $this->queue->chosen());
     }
 
     /** @depends testReserve */
@@ -308,7 +311,7 @@ class DbTest extends \Codeception\TestCase\Test
         $time = time();
         $nothing = $this->queue->reserve($timeout = 2);
         $this->assertFalse($nothing);
-        $this->assertEquals(time(), $time+$timeout, null, 1);
+        $this->assertEquals(time(), $time+$timeout, null, 0.2);
     }
 
     /**
@@ -353,9 +356,99 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($medium, $this->queue->reserve()->getBody());
         $this->assertEquals($lowest, $this->queue->reserve()->getBody());
     }
+
     public function testReserveLowPriority()
     {
         $this->queue->put($common = 'common priority', [Db::OPT_PRIORITY => Job::PRIORITY_DEFAULT]);
+    }
+
+    /**
+     * @depends testPeek
+     * @depends testWatch
+     */
+    public function testProcess()
+    {
+        //asserts it passes through all available jobs in "default"
+        $total = 0;
+        $stats = self::$stats[self::TUBE_DEFAULT];
+        $available = $stats['ready'] + $stats['urgent'];
+        $this->queue->process(function() use (&$total) {
+            ++$total;
+            return true;
+        });
+        $this->assertEquals($available, $total, 'Incorrect number of jobs processed in "default" tube');
+    }
+
+    /** @depends testProcess */
+    public function testProcessLimit()
+    {
+        $total = 0;
+        $this->queue->process(function($body, $job) use (&$total) {
+            ++$total;
+            return true;
+        }, 1, $limit = 2);
+        $this->assertEquals($limit, $total, 'Incorrect number of limited jobs processed in "default" tube');
+    }
+
+    /** @depends testProcess */
+    public function testProcessDelete()
+    {
+        //asserts the job body is correctly fetch and the job is deleted correctly
+        $id = 0;
+        $this->queue->watch('array', true);
+        $this->queue->process(function ($body, Job $job) use (&$id) {
+            $this->assertInternalType('array', $body);
+            $this->assertInstanceOf(Job::class, $job);
+            $id = $job->getId();
+            return true;
+        });
+        $this->assertFalse($this->queue->peek($id), 'array job processed was not deleted');
+    }
+
+    /** @depends testProcess */
+    public function testProcessBury()
+    {
+        $this->queue->watch('int', true);
+        $this->queue->process(function($body, Job $job) use (&$id) {
+            $id = $job->getId();
+            return false;
+        });
+        $this->assertEquals(Job::ST_BURIED, $this->queue->peek($id)->getState(), 'Job was not buried on FALSE');
+    }
+
+    /**
+     * @depends testProcessDelete
+     * @depends testProcessLimit
+     */
+    public function testProcessRelease()
+    {
+        $count = 0;
+        $this->queue->watch('int', true);
+        $this->queue->process(function($body, Job $job) use (&$id, &$count) {
+            if ($count == 0) {
+                $id = $job->getId();
+                ++$count;
+                return;
+            }
+        }, 1, 1);
+        $this->assertEquals(Job::ST_READY, $this->queue->peek($id)->getState(), 'Job was not released on NULL');
+    }
+
+    /**
+     * @depends testProcess
+     * @depends testProcessLimit
+     */
+    public function testProcessCallables()
+    {
+        $this->queue->watch('json');
+        $worker = function ($body) { $this->assertNotEmpty($body); };
+        $this->queue->process($worker, 1, 1);
+        $this->queue->process([$this, 'workerForProcessTest'], 1, 1);
+    }
+
+    public function workerForProcessTest($body, Job $job)
+    {
+        $this->assertNotEmpty($body);
     }
 
     public function testPeek()
@@ -363,6 +456,8 @@ class DbTest extends \Codeception\TestCase\Test
         $job = $this->queue->peek(1);
         $this->assertInstanceOf(Job::class, $job);
         $this->assertEquals(1, $job->getId());
+
+        $this->assertFalse($this->queue->peek(0));
     }
 
     public function testPeekReady()

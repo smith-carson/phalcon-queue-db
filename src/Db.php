@@ -115,20 +115,21 @@ class Db extends Beanstalk
 
     /**
      * Reserves a job in the queue.
-     * @param int $timeout How much time to spend in this function while pooling for jobs
-     * @param int $pool    How long to wait while pooling for a new job before returning
+     * @param int   $timeout How much time to spend in this function while pooling for jobs
+     * @param float $delay   How long to wait while pooling for a new job before returning
      * @return bool|\Phalcon\Queue\Db\Job
      */
-    public function reserve($timeout = null, $pool = 1)
+    public function reserve($timeout = null, $delay = 1)
     {
         //we only need to calculate the ending time if there's a timeout requirement
         $willPool = $timeout !== 0;
         $timeout  = $timeout?: PHP_INT_MAX;
         $end      = time() + $timeout;
+        $udelay   = $delay * 1000;
 
         //while we got no job and there's need to pool and we haven't timed out, sleep and try to get a new job
-        while (!($job = $this->simpleReserve()) && $willPool && time() + $pool <= $end) {
-            sleep($pool);
+        while (!($job = $this->simpleReserve()) && $willPool && time() + $delay <= $end) {
+            usleep($udelay*1000);
         }
 
         //got it! return
@@ -148,12 +149,12 @@ class Db extends Beanstalk
      * </code>
      *
      * @param callable $worker  Something to process a job. Signature: function(mixed $worker, Job $job):bool
-     * @param int      $pool    How long to wait until pooling for new jobs, in seconds.
+     * @param int      $delay    How long to wait until pooling for new jobs, in seconds.
      * @param int      $limit   Limit of jobs to process before exiting. Defaults to a very, very high value.
      * @param int      $timeout How much time to spend processing/pooling jobs (won't halt running jobs).
      * @return array Stats of the processed jobs: number of "success", "failure" and "skipped" jobs.
      */
-    public function process(callable $worker, $pool = 1, $limit = null, $timeout = null)
+    public function process(callable $worker, $delay = 1, $limit = null, $timeout = null)
     {
         $limit = $limit?: PHP_INT_MAX;
 
@@ -163,7 +164,7 @@ class Db extends Beanstalk
             'failure' => 0,
             'skipped' => 0,
         ];
-        while ($processed++ < $limit && ($job = $this->reserve($timeout, $pool))) {
+        while ($processed++ < $limit && ($job = $this->reserve($timeout, $delay))) {
             $result = $worker($job->getBody(), $job);
             if ($result) {
                 $job->delete();

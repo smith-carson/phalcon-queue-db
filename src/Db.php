@@ -119,13 +119,15 @@ class Db extends Beanstalk
      * @param int $pool    How long to wait while pooling for a new job before returning
      * @return bool|\Phalcon\Queue\Db\Job
      */
-    public function reserve($timeout = 0, $pool = 1)
+    public function reserve($timeout = null, $pool = 1)
     {
         //we only need to calculate the ending time if there's a timeout requirement
-        $end = ($timeout > 0) ? time() + $timeout : -1;
+        $willPool = $timeout !== 0;
+        $timeout  = $timeout?: PHP_INT_MAX;
+        $end      = time() + $timeout;
 
-        //while we got no job, and timeout is set but won't be achieved with a new sleep, sleep and try to get a new job
-        while (!($job = $this->simpleReserve()) && ($timeout > 0 && time() + $pool <= $end)) {
+        //while we got no job and there's need to pool and we haven't timed out, sleep and try to get a new job
+        while (!($job = $this->simpleReserve()) && $willPool && time() + $pool <= $end) {
             sleep($pool);
         }
 
@@ -145,23 +147,37 @@ class Db extends Beanstalk
      * });
      * </code>
      *
-     * @param callable $worker Something to process a job. Signature: function(mixed $worker, Job $job):bool
-     * @param int      $pool   How long to wait until pooling for new jobs, in seconds.
-     * @param int      $limit  Limit of jobs to process before exiting
+     * @param callable $worker  Something to process a job. Signature: function(mixed $worker, Job $job):bool
+     * @param int      $pool    How long to wait until pooling for new jobs, in seconds.
+     * @param int      $limit   Limit of jobs to process before exiting. Defaults to a very, very high value.
+     * @param int      $timeout How much time to spend processing/pooling jobs (won't halt running jobs).
+     * @return array Stats of the processed jobs: number of "success", "failure" and "skipped" jobs.
      */
-    public function process(callable $worker, $pool = 1, $limit = PHP_INT_MAX)
+    public function process(callable $worker, $pool = 1, $limit = null, $timeout = null)
     {
+        $limit = $limit?: PHP_INT_MAX;
+
         $processed = 0;
-        while ($processed++ < $limit && ($job = $this->reserve(0, $pool))) {
+        $stats     = [
+            'success' => 0,
+            'failure' => 0,
+            'skipped' => 0,
+        ];
+        while ($processed++ < $limit && ($job = $this->reserve($timeout, $pool))) {
             $result = $worker($job->getBody(), $job);
             if ($result) {
                 $job->delete();
+                ++$stats['success'];
             } elseif ($result === null) {
                 $job->release();
+                ++$stats['skipped'];
             } else {
                 $job->bury();
+                ++$stats['failure'];
             }
         }
+
+        return $stats;
     }
 
     /**

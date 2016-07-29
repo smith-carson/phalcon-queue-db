@@ -11,6 +11,8 @@ use Phalcon\Queue\Db\Model as JobModel;
  *
  * <code>
  * $queue = new \Phalcon\Queue\Db();
+ * $queue->choose('tube')->put('body');
+ * $queue->watch('tube')->process(function($body) { return $works = doStuff($body); });
  * </code>
  *
  * @todo: implement TTR and Job::touch()
@@ -165,19 +167,20 @@ class Db extends Beanstalk
     /**
      * Change the active tube to put jobs on. The default tube is "default".
      * @param string $tube
-     * @return string
+     * @return self
      * @see \Phalcon\Queue\Db::using()
      */
     public function choose($tube)
     {
-        return $this->using = (string) $tube;
+        $this->using = (string) $tube;
+        return $this;
     }
 
     /**
      * Change what tubes to watch for when getting jobs. The default value is "default".
      * @param string|array $tube    Name of one or more tubes to watch
      * @param bool         $replace If the current watch list should be replaced for this one, or just include these
-     * @return string
+     * @return self
      * @see \Phalcon\Queue\Db::watching()
      */
     public function watch($tube, $replace = false)
@@ -188,7 +191,8 @@ class Db extends Beanstalk
             //merges, throws away repeated values, and re-indexes
             $this->watching = array_values(array_unique(array_merge($this->watching, (array) $tube)));
         }
-        return $this->watching;
+
+        return $this;
     }
 
     /**

@@ -33,13 +33,13 @@ class Db extends Beanstalk
      * Where to put jobs.
      * @var string
      */
-    protected $using = 'default';
+    protected $using = self::DEFAULT_TUBE;
 
     /**
      * Where to get jobs from.
      * @var array
      */
-    protected $watching = ['default'];
+    protected $watching = [self::DEFAULT_TUBE];
 
     /** Time to run (aka timeout) */
 //    const OPT_TTR      = 'ttr';

@@ -24,7 +24,7 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
     const PRIORITY_HIGHEST = 0;
     const PRIORITY_MEDIUM  = 2147483648; // 2^31
     const PRIORITY_LOWEST  = 4294967295; // 2^32 -1
-    const PRIORITY_DEFAULT = self::PRIORITY_MEDIUM;
+    const PRIORITY_DEFAULT = Db::DEFAULT_PRIORITY;
 
     const ST_BURIED   = 'buried';
     const ST_READY    = 'ready';

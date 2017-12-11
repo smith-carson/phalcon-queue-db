@@ -472,7 +472,7 @@ class Db extends Beanstalk
         throw new BadMethod('"read" is not a valid method in DB queues.');
     }
 
-    protected function write($data)
+    public function write($data)
     {
         throw new BadMethod('"write" is not a valid method in DB queues.');
     }

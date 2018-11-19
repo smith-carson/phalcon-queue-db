@@ -164,6 +164,7 @@ class Db extends Beanstalk
             'failure' => 0,
             'skipped' => 0,
         ];
+
         while ($processed++ < $limit && ($job = $this->reserve($timeout, $delay))) {
             $result = $worker($job->getBody(), $job);
             if ($result) {
@@ -175,6 +176,9 @@ class Db extends Beanstalk
             } else {
                 $job->bury();
                 ++$stats['failure'];
+            }
+            if ($this->connection->isUnderTransaction()) {
+                $this->connection->commit();
             }
         }
 

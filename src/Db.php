@@ -163,15 +163,20 @@ class Db extends Beanstalk
             'success' => 0,
             'failure' => 0,
             'skipped' => 0,
+            'delayed' => 0,
         ];
+
         while ($processed++ < $limit && ($job = $this->reserve($timeout, $delay))) {
             $result = $worker($job->getBody(), $job);
-            if ($result) {
+            if ($result === true) {
                 $job->delete();
                 ++$stats['success'];
             } elseif ($result === null) {
                 $job->release();
                 ++$stats['skipped'];
+            } elseif (is_int($result)) { // delay number of seconds
+                $job->release(0, $result);
+                ++$stats['delayed'];
             } else {
                 $job->bury();
                 ++$stats['failure'];

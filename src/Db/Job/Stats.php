@@ -45,7 +45,7 @@ class Stats extends \ArrayObject
     private function correctCase($key)
     {
         if (strpos($key, '_')) {
-            return lcfirst(Text::camelize($key));
+            return lcfirst(\Phalcon\Helper\Str::camelize($key));
         } else {
             return $key;
         }

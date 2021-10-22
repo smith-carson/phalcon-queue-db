@@ -7,8 +7,23 @@ use Phalcon\Queue\Db\Model as JobModel;
 /**
  * Job from the DB backend.
  */
-class Job extends \Phalcon\Queue\Beanstalk\Job
+class Job // extends \Phalcon\Queue\Beanstalk\Job
 {
+    /**
+     * @var string
+     */
+    protected $_id;
+
+    /**
+     * @var mixed
+     */
+    protected $_body;
+
+    /**
+     * @var mixed
+     */
+    protected $_queue;
+
     /**
      * @var JobModel
      * @see getModel()
@@ -35,7 +50,9 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
 
     public function __construct(Db $queue, JobModel $model)
     {
-        parent::__construct($queue, $model->id, $model->body);
+        $this->_queue = $queue;
+        $this->_id = $model->id;
+        $this->_body = $model->body;
         $this->setModel($model);
     }
 
@@ -104,7 +121,8 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
             $data['priority'] = $priority;
         }
 
-        return $this->model->update($data);
+        $this->model->assign($data);
+        return $this->model->update();
     }
 
     public function bury($priority = null)
@@ -117,7 +135,8 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
             $data['priority'] = $priority;
         }
 
-        return $this->model->update($data);
+        $this->model->assign($data);
+        return $this->model->update();
     }
 
     //TODO: implement
@@ -134,7 +153,12 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
             case self::ST_DELAYED: $payload = ['delay' => 0]; break; //FIXME: missing tests for kicking a delayed job!
         }
 
-        return $payload ? $this->model->update($payload) : true;
+        if ($payload) {
+            $this->model->assign($payload);
+           return $this->model->update();
+        } else {
+            return true;
+        }
     }
 
     /**
@@ -166,7 +190,7 @@ class Job extends \Phalcon\Queue\Beanstalk\Job
 
     public function __wakeup()
     {
-        parent::__wakeup();
+        // parent::__wakeup();
         $this->getModel(); //caches model information from job id
     }
 }

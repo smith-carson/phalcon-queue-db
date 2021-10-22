@@ -23,15 +23,9 @@ class Model extends \Phalcon\Mvc\Model
 
     public $buried = 0;
 
-    public function getSource()
-    {
-        return 'jobs';
-    }
-
     public function initialize()
     {
-        //FIXME: it seems the release procedure fails with this enabled x_x
-//        $this->useDynamicUpdate(true);
+        $this->setSource('jobs');
     }
 
     public function beforeValidationOnCreate()

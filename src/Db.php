@@ -17,10 +17,33 @@ use Phalcon\Queue\Db\Model as JobModel;
  *
  * @todo: implement TTR and Job::touch()
  */
-class Db extends Beanstalk
+class Db // extends Beanstalk
 {
+    /**
+     * Seconds to wait before putting the job in the ready queue.
+     * The job will be in the "delayed" state during this time.
+     *
+     * @const integer
+     */
+    const DEFAULT_DELAY = 0;
 
-    /** @var \Phalcon\Db\Adapter\Pdo */
+    /**
+     * Jobs with smaller priority values will be scheduled before jobs with larger priorities.
+     * The most urgent priority is 0, the least urgent priority is 4294967295.
+     *
+     * @const integer
+     */
+    const DEFAULT_PRIORITY = 100;
+
+    /**
+     * Default tube name
+     * @const string
+     */
+    const DEFAULT_TUBE = "default";
+
+
+
+    /** @var \Phalcon\Db\Adapter\Pdo\AbstractPdo */
     protected $connection;
 
     /**
@@ -75,7 +98,6 @@ class Db extends Beanstalk
     /**
      * Inserts jobs into the queue.
      * @param mixed $data
-     * @param array $options
      * @throws InvalidJobOperationException In case there's an error with the put operation
      * @return string|bool
      */
@@ -95,7 +117,8 @@ class Db extends Beanstalk
         ]);
 
         $job   = new JobModel();
-        if ($job->save($payload)) {
+        $job->assign($payload);
+        if ($job->save()) {
             return (int) $job->id;
         } else {
             $messages = implode(' / ', $job->getMessages());
@@ -106,7 +129,8 @@ class Db extends Beanstalk
     protected function simpleReserve()
     {
         if ($job = $this->peekReady()) {
-            $job->getModel()->update(['reserved' => 1]);
+            $job->getModel()->assign(['reserved' => 1]);
+            $job->getModel()->update();
             return $job;
         } else {
             return false;

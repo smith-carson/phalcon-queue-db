@@ -132,7 +132,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($tube, $this->queue->chosen());
     }
 
-    /** @depends testReserve */
     public function testWatch()
     {
         //gets from the default tube
@@ -159,7 +158,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals(self::TUBE_INT, $int->stats()->tube);
     }
 
-    /** @depends testWatch */
     public function testIgnore()
     {
         //default tube is the only being watched in the beginning
@@ -180,7 +178,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals([self::TUBE_INT], $this->queue->watching());
     }
 
-    /** @depends testPeek */
     public function testPut()
     {
         $id = $this->queue->put($body = 'test');
@@ -190,7 +187,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($body, $job->getBody());
     }
 
-    /** @depends testPut */
     public function testPutComplexTypes()
     {
         //FIXME: read about data providers
@@ -281,7 +277,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($priority, $stats->priority);
     }
 
-    /** @depends testPeekReady */
     public function testReserve()
     {
         //reserves one
@@ -294,7 +289,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertNotEquals($job, $other);
     }
 
-    /** @depends testReserve */
     public function testReserveEmpty()
     {
         //chooses a tube that has only one job available and tries to reserve two
@@ -303,7 +297,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertFalse($this->queue->reserve(0));
     }
 
-    /** @depends testReserve */
     public function testReserveTimeout()
     {
         //chooses a tube that has only one job available, and reserves it
@@ -317,14 +310,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEqualsWithDelta(time(), $time+$timeout, 0.2, "Reserved Timtout is ok");
     }
 
-    /**
-     * @depends testPut
-     * @depends testChoose
-     * @depends testWatch
-     * @depends testPeek
-     * @depends testReserve
-     * @depends testReserveTimeout
-     */
     public function testReserveDelayed()
     {
         $body  = 'specially delayed';
@@ -343,8 +328,6 @@ class DbTest extends \Codeception\TestCase\Test
 
     /**
      * @db empty
-     * @depends testPut
-     * @depends testReserve
      */
     public function testReservePrioritized()
     {
@@ -368,10 +351,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->queue->put($common = 'common priority', [Db::OPT_PRIORITY => Job::PRIORITY_DEFAULT]);
     }
 
-    /**
-     * @depends testPeek
-     * @depends testWatch
-     */
     public function testProcess()
     {
         //asserts it passes through all available jobs in "default"
@@ -385,7 +364,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($available, $total, 'Incorrect number of jobs processed in "default" tube');
     }
 
-    /** @depends testProcess */
     public function testProcessLimit()
     {
         $total = 0;
@@ -396,7 +374,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals($limit, $total, 'Incorrect number of limited jobs processed in "default" tube');
     }
 
-    /** @depends testProcess */
     public function testProcessDelete()
     {
         //asserts the job body is correctly fetch and the job is deleted correctly
@@ -411,7 +388,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertFalse($this->queue->peek($id), 'array job processed was not deleted');
     }
 
-    /** @depends testProcess */
     public function testProcessBury()
     {
         $this->queue->watch('int', true);
@@ -422,10 +398,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals(Job::ST_BURIED, $this->queue->peek($id)->getState(), 'Job was not buried on FALSE');
     }
 
-    /**
-     * @depends testProcessDelete
-     * @depends testProcessLimit
-     */
     public function testProcessRelease()
     {
         $count = 0;
@@ -440,10 +412,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertEquals(Job::ST_READY, $this->queue->peek($id)->getState(), 'Job was not released on NULL');
     }
 
-    /**
-     * @depends testProcess
-     * @depends testProcessLimit
-     */
     public function testProcessCallables()
     {
         $this->queue->watch('json');
@@ -495,7 +463,6 @@ class DbTest extends \Codeception\TestCase\Test
         $this->assertGreaterThan(0, $stats->delay);
     }
 
-    /** @depends testStatsTube */
     public function testKick()
     {
         //kicks all buried jobs but one, and sees if the updated stats reflect this

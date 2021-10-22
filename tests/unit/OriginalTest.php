@@ -22,7 +22,7 @@ class OriginalTest extends \Codeception\TestCase\Test
         }
 
         //we don't need any existing job in the table for this class
-        $this->getModule('Db')->dbh->exec('DELETE FROM jobs');
+        $this->getModule('Db')->_getDbh()->exec('DELETE FROM jobs');
     }
 
     public function testBasic()
@@ -83,10 +83,10 @@ class OriginalTest extends \Codeception\TestCase\Test
         $this->assertNotFalse($this->queue->choose('beanstalk-test'));
 
         $queueStats = $this->queue->stats();
-        $this->assertInternalType('array', $queueStats);
+        $this->assertIsArray( $queueStats);
 
         $tubeStats = $this->queue->statsTube('beanstalk-test');
-        $this->assertInternalType('array', $tubeStats);
+        $this->assertIsArray( $tubeStats);
         $this->assertEquals('beanstalk-test', $tubeStats['name']);
 
         $this->assertFalse($this->queue->statsTube('beanstalk-test-does-not-exist'));
@@ -100,7 +100,7 @@ class OriginalTest extends \Codeception\TestCase\Test
         $job      = $this->queue->peekReady();
         $jobStats = (array)$job->stats(); //there's no way for an ArrayObject be defined as scalar array, so...
 
-        $this->assertInternalType('array', $jobStats);
+        $this->assertIsArray( $jobStats);
         $this->assertEquals('beanstalk-test', $jobStats['tube']);
     }
 }

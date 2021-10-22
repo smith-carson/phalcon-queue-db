@@ -77,7 +77,7 @@ class DbTest extends \Codeception\TestCase\Test
         if (isset($annotations['db'])) {
             switch ($annotations['db'][0]) {
                 case 'empty':
-                    $this->getModule('Db')->dbh->exec('DELETE FROM jobs');
+                    $this->getModule('Db')->_getDbh()->exec('DELETE FROM jobs');
                     break;
             }
         }
@@ -91,6 +91,9 @@ class DbTest extends \Codeception\TestCase\Test
     /** @db empty */
     public function testListEmptyTubes()
     {
+        // Annotations not working
+        $this->getModule('Db')->_getDbh()->exec('DELETE FROM jobs');
+
         $tubes = $this->queue->listTubes();
         $this->assertEquals([], $tubes, 'there should be no tubes in the database');
     }
@@ -98,7 +101,7 @@ class DbTest extends \Codeception\TestCase\Test
     public function testListAllTubes()
     {
         $tubes = $this->queue->listTubes();
-        $this->assertEquals(self::$tubes, $tubes, 'not all tubes were found', 0, 2, true);
+        $this->assertEqualsCanonicalizing(self::$tubes, $tubes, 'not all tubes were found');
     }
 
     public function testStats()
@@ -181,7 +184,7 @@ class DbTest extends \Codeception\TestCase\Test
     public function testPut()
     {
         $id = $this->queue->put($body = 'test');
-        $this->assertInternalType('int', $id);
+        $this->assertIsInt($id);
         $this->assertGreaterThan(0, $id);
         $job = $this->queue->peek($id);
         $this->assertEquals($body, $job->getBody());
@@ -198,7 +201,7 @@ class DbTest extends \Codeception\TestCase\Test
 
         foreach ($bodies as $type => $body) {
             $id = $this->queue->put($body);
-            $this->assertInternalType('int', $id, "Body of $type is not int");
+            $this->assertIsInt($id, "Body of $type is not int");
             $this->assertGreaterThan(0, $id, "ID of $type seems weird");
             $this->assertEquals($body, $this->queue->peek($id)->getBody(), "Body of $type failed on comparison");
         }
@@ -215,7 +218,7 @@ class DbTest extends \Codeception\TestCase\Test
 
         //puts the job correctly
         $id = $this->queue->put($body, [Db::OPT_PRIORITY => $priority]);
-        $this->assertInternalType('int', $id);
+        $this->assertIsInt( $id);
 
         //verifies the job information is correct
         $job = $this->queue->peek($id);
@@ -248,7 +251,7 @@ class DbTest extends \Codeception\TestCase\Test
 
         //puts the job correctly
         $id = $this->queue->put($body, [Db::OPT_DELAY => $delay]);
-        $this->assertInternalType('int', $id);
+        $this->assertIsInt($id);
 
         //verifies if the job information is correct
         $job   = $this->queue->peek($id);
@@ -311,7 +314,7 @@ class DbTest extends \Codeception\TestCase\Test
         $time = time();
         $nothing = $this->queue->reserve($timeout = 2);
         $this->assertFalse($nothing);
-        $this->assertEquals(time(), $time+$timeout, null, 0.2);
+        $this->assertEqualsWithDelta(time(), $time+$timeout, 0.2, "Reserved Timtout is ok");
     }
 
     /**
@@ -345,6 +348,9 @@ class DbTest extends \Codeception\TestCase\Test
      */
     public function testReservePrioritized()
     {
+        // annotations not working
+        $this->getModule('Db')->_getDbh()->exec('DELETE FROM jobs');
+
         $this->queue->put($urgent = 'URGENT', [Db::OPT_PRIORITY => Job::PRIORITY_HIGHEST]);
         $this->queue->put($almost = 'ALMOST', [Db::OPT_PRIORITY => Job::PRIORITY_HIGHEST + 1]);
         $this->queue->put($normal = 'NORMAL', [Db::OPT_PRIORITY => Job::PRIORITY_DEFAULT]);
@@ -397,7 +403,7 @@ class DbTest extends \Codeception\TestCase\Test
         $id = 0;
         $this->queue->watch('array', true);
         $this->queue->process(function ($body, Job $job) use (&$id) {
-            $this->assertInternalType('array', $body);
+            $this->assertIsArray($body);
             $this->assertInstanceOf(Job::class, $job);
             $id = $job->getId();
             return true;
@@ -473,18 +479,18 @@ class DbTest extends \Codeception\TestCase\Test
     {
         $job = $this->queue->peekBuried();
         $this->assertInstanceOf(Job::class, $job);
-        $this->assertEquals($job->getBody(), 'buried');
-        $this->assertEquals($job->getState(), Job::ST_BURIED);
+        $this->assertEquals('buried', $job->getBody());
+        $this->assertEquals(Job::ST_BURIED, $job->getState());
     }
 
     public function testPeekDelayed()
     {
         $job = $this->queue->peekDelayed();
         $this->assertInstanceOf(Job::class, $job);
-        $this->assertEquals($job->getBody(), 'delayed until later');
+        $this->assertEquals('delayed until later', $job->getBody());
 
         $stats = $job->stats();
-        $this->assertEquals($stats->state, Job::ST_DELAYED);
+        $this->assertEquals(Job::ST_DELAYED, $stats->state);
         $this->assertGreaterThan(time(), $stats->delayedUntil);
         $this->assertGreaterThan(0, $stats->delay);
     }

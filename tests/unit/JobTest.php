@@ -81,20 +81,20 @@ class JobTest extends \Codeception\TestCase\Test
             $this->assertArrayHasKey($key, $stats, "Key $key not found on job stats, or stats is not an array/ArrayAccess");
         }
 
-        $this->assertInternalType('int',    $stats->id);
+        $this->assertIsInt(    $stats->id);
         $this->assertGreaterThan(0,         $stats->id);
         $this->assertGreaterThan(0,         $stats->age);
-        $this->assertInternalType('string', $stats->state);
+        $this->assertIsString( $stats->state);
         $this->assertNotEmpty(              $stats->state);
-        $this->assertInternalType('string', $stats->tube);
+        $this->assertIsString( $stats->tube);
         $this->assertNotEmpty(              $stats->tube);
         $this->assertTrue(in_array(         $stats->tube, DbTest::$tubes), 'invalid tube');
-        $this->assertInternalType('int',    $stats->delay);
+        $this->assertIsInt(    $stats->delay);
         $this->assertGreaterThanOrEqual(0,  $stats->delay);
-        $this->assertInternalType('int',    $stats->delayedUntil); //no need to check for valid timestamp: any int is
-        $this->assertInternalType('int',    $stats->priority);
+        $this->assertIsInt(    $stats->delayedUntil); //no need to check for valid timestamp: any int is
+        $this->assertIsInt(    $stats->priority);
         $this->assertGreaterThanOrEqual(0,  $stats->priority);
-        $this->assertInternalType('string', $stats->priorityText);
+        $this->assertIsString( $stats->priorityText);
         $this->assertNotEmpty(              $stats->priorityText);
     }
 
@@ -107,7 +107,7 @@ class JobTest extends \Codeception\TestCase\Test
         $job = $this->getAJob('buried = 1 OR reserved = 1');
         $job->delete();
         $this->assertEquals(Job::ST_DELETED, $job->getState());
-        $this->tester->expectException(InvalidJobOperation::class, function() use ($job) { $job->stats(); });
+        $this->tester->expectThrowable(InvalidJobOperation::class, function() use ($job) { $job->stats(); });
     }
 
     /** @depends testGetState */

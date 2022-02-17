@@ -432,6 +432,7 @@ class Db // extends Beanstalk
             'conditions' => implode(' AND ', $conditions),
             'bind'       => array_merge(['tubes' => $this->watching], $bind),
             'order'      => 'priority ASC, id ASC',
+            'for_update' => true,
         ]);
 
         return $job ? new Job($this, $job) : false;

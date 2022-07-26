@@ -91,7 +91,6 @@ class Db // extends Beanstalk
     public function connect()
     {
         if (! $this->connection) {
-            var_dump(Di::getDefault()); die();
             $this->connection = Di::getDefault()->get($this->diServiceKey);
         }
         return true;

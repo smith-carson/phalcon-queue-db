@@ -8,7 +8,7 @@ modules:
         - Asserts
         - \Helper\Unit
         - Db
-        - Phalcon:
-            bootstrap: 'tests/_envs/phalcon/app/config/bootstrap.php'
-            cleanup: true
-            savepoints: true
+#        - Phalcon:
+#            bootstrap: 'tests/_envs/phalcon/app/config/bootstrap.php'
+#            cleanup: true
+#            savepoints: true

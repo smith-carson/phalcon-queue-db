@@ -1,4 +1,6 @@
-<?php namespace Phalcon\Queue\Db;
+<?php
+
+namespace Phalcon\Queue\Db;
 
 class InvalidJobOperationException extends \RuntimeException
 {

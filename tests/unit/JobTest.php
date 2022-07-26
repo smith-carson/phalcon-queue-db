@@ -1,4 +1,5 @@
 <?php
+
 use Phalcon\Queue\Db;
 use Phalcon\Queue\Db\InvalidJobOperationException as InvalidJobOperation;
 use Phalcon\Queue\Db\Job;
@@ -6,7 +7,6 @@ use Phalcon\Queue\Db\Model as JobModel;
 
 class JobTest extends \Codeception\TestCase\Test
 {
-
     /** @var \UnitTester */
     protected $tester;
 
@@ -16,8 +16,10 @@ class JobTest extends \Codeception\TestCase\Test
      */
     public function getAJob($criteria = null)
     {
-        $model = JobModel::findFirst($criteria?: ['order' => 'RANDOM()']);
-        return $model? new Job(new Db(), $model) : false;
+        $model = JobModel::findFirst($criteria ?: [
+            'order' => 'RANDOM()',
+        ]);
+        return $model ? new Job(new Db(), $model) : false;
     }
 
     public function testInstance()
@@ -43,11 +45,11 @@ class JobTest extends \Codeception\TestCase\Test
     {
         $now = time();
         $this->assertEquals(Job::ST_READY, $this->getAJob('tube="int"')->getState());
-        $this->assertEquals(Job::ST_READY, $this->getAJob('delay <= '.$now)->getState());
-        $this->assertEquals(Job::ST_DELAYED, $this->getAJob('delay > '.$now)->getState());
+        $this->assertEquals(Job::ST_READY, $this->getAJob('delay <= ' . $now)->getState());
+        $this->assertEquals(Job::ST_DELAYED, $this->getAJob('delay > ' . $now)->getState());
         $this->assertEquals(Job::ST_BURIED, $this->getAJob('buried = 1')->getState());
         $this->assertEquals(Job::ST_RESERVED, $this->getAJob('reserved = 1')->getState());
-        $this->assertEquals(Job::ST_URGENT, $this->getAJob('priority < '.Job::PRIORITY_MEDIUM)->getState());
+        $this->assertEquals(Job::ST_URGENT, $this->getAJob('priority < ' . Job::PRIORITY_MEDIUM)->getState());
     }
 
     public function testGetBody()
@@ -81,21 +83,21 @@ class JobTest extends \Codeception\TestCase\Test
             $this->assertArrayHasKey($key, $stats, "Key $key not found on job stats, or stats is not an array/ArrayAccess");
         }
 
-        $this->assertIsInt(    $stats->id);
-        $this->assertGreaterThan(0,         $stats->id);
-        $this->assertGreaterThan(0,         $stats->age);
-        $this->assertIsString( $stats->state);
-        $this->assertNotEmpty(              $stats->state);
-        $this->assertIsString( $stats->tube);
-        $this->assertNotEmpty(              $stats->tube);
-        $this->assertTrue(in_array(         $stats->tube, DbTest::$tubes), 'invalid tube');
-        $this->assertIsInt(    $stats->delay);
-        $this->assertGreaterThanOrEqual(0,  $stats->delay);
-        $this->assertIsInt(    $stats->delayedUntil); //no need to check for valid timestamp: any int is
-        $this->assertIsInt(    $stats->priority);
-        $this->assertGreaterThanOrEqual(0,  $stats->priority);
-        $this->assertIsString( $stats->priorityText);
-        $this->assertNotEmpty(              $stats->priorityText);
+        $this->assertIsInt($stats->id);
+        $this->assertGreaterThan(0, $stats->id);
+        $this->assertGreaterThan(0, $stats->age);
+        $this->assertIsString($stats->state);
+        $this->assertNotEmpty($stats->state);
+        $this->assertIsString($stats->tube);
+        $this->assertNotEmpty($stats->tube);
+        $this->assertTrue(in_array($stats->tube, DbTest::$tubes), 'invalid tube');
+        $this->assertIsInt($stats->delay);
+        $this->assertGreaterThanOrEqual(0, $stats->delay);
+        $this->assertIsInt($stats->delayedUntil); //no need to check for valid timestamp: any int is
+        $this->assertIsInt($stats->priority);
+        $this->assertGreaterThanOrEqual(0, $stats->priority);
+        $this->assertIsString($stats->priorityText);
+        $this->assertNotEmpty($stats->priorityText);
     }
 
     /**
@@ -107,7 +109,9 @@ class JobTest extends \Codeception\TestCase\Test
         $job = $this->getAJob('buried = 1 OR reserved = 1');
         $job->delete();
         $this->assertEquals(Job::ST_DELETED, $job->getState());
-        $this->tester->expectThrowable(InvalidJobOperation::class, function() use ($job) { $job->stats(); });
+        $this->tester->expectThrowable(InvalidJobOperation::class, function () use ($job) {
+            $job->stats();
+        });
     }
 
     /** @depends testGetState */
@@ -165,9 +169,8 @@ class JobTest extends \Codeception\TestCase\Test
     public function testUnserialize()
     {
         $job = $this->getAJob();
-        $packed   = serialize($job);
+        $packed = serialize($job);
         $unpacked = unserialize($packed);
         $this->assertEquals($unpacked, $job);
     }
-
 }

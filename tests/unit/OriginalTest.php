@@ -1,4 +1,5 @@
 <?php
+
 use Phalcon\Queue\Db\Job;
 
 /**
@@ -27,7 +28,9 @@ class OriginalTest extends \Codeception\TestCase\Test
 
     public function testBasic()
     {
-        $expected = ['processVideo' => 4871];
+        $expected = [
+            'processVideo' => 4871,
+        ];
 
         $this->queue->put($expected);
         while (($job = $this->queue->peekReady()) !== false) {
@@ -83,10 +86,10 @@ class OriginalTest extends \Codeception\TestCase\Test
         $this->assertNotFalse($this->queue->choose('beanstalk-test'));
 
         $queueStats = $this->queue->stats();
-        $this->assertIsArray( $queueStats);
+        $this->assertIsArray($queueStats);
 
         $tubeStats = $this->queue->statsTube('beanstalk-test');
-        $this->assertIsArray( $tubeStats);
+        $this->assertIsArray($tubeStats);
         $this->assertEquals('beanstalk-test', $tubeStats['name']);
 
         $this->assertFalse($this->queue->statsTube('beanstalk-test-does-not-exist'));
@@ -97,10 +100,10 @@ class OriginalTest extends \Codeception\TestCase\Test
 
         $this->queue->watch('beanstalk-test');
 
-        $job      = $this->queue->peekReady();
-        $jobStats = (array)$job->stats(); //there's no way for an ArrayObject be defined as scalar array, so...
+        $job = $this->queue->peekReady();
+        $jobStats = (array) $job->stats(); //there's no way for an ArrayObject be defined as scalar array, so...
 
-        $this->assertIsArray( $jobStats);
+        $this->assertIsArray($jobStats);
         $this->assertEquals('beanstalk-test', $jobStats['tube']);
     }
 }

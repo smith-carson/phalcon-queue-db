@@ -1,7 +1,9 @@
-<?php namespace Phalcon\Queue;
+<?php
+
+namespace Phalcon\Queue;
 
 use BadMethodCallException as BadMethod;
-use Phalcon\Di;
+use Phalcon\Di\Di;
 use Phalcon\Queue\Db\InvalidJobOperationException;
 use Phalcon\Queue\Db\Job;
 use Phalcon\Queue\Db\Model as JobModel;
@@ -25,7 +27,7 @@ class Db // extends Beanstalk
      *
      * @const integer
      */
-    const DEFAULT_DELAY = 0;
+    public const DEFAULT_DELAY = 0;
 
     /**
      * Jobs with smaller priority values will be scheduled before jobs with larger priorities.
@@ -33,15 +35,13 @@ class Db // extends Beanstalk
      *
      * @const integer
      */
-    const DEFAULT_PRIORITY = 100;
+    public const DEFAULT_PRIORITY = 100;
 
     /**
      * Default tube name
      * @const string
      */
-    const DEFAULT_TUBE = "default";
-
-
+    public const DEFAULT_TUBE = "default";
 
     /** @var \Phalcon\Db\Adapter\Pdo\AbstractPdo */
     protected $connection;
@@ -67,8 +67,9 @@ class Db // extends Beanstalk
     /** Time to run (aka timeout) */
 //    const OPT_TTR      = 'ttr';
     /** How many seconds to wait before this job becomes available */
-    const OPT_DELAY    = 'delay';
-    const OPT_PRIORITY = 'priority';
+    public const OPT_DELAY = 'delay';
+
+    public const OPT_PRIORITY = 'priority';
 
     /**
      * Queue manager constructor. Will connect upon creation.
@@ -89,7 +90,8 @@ class Db // extends Beanstalk
      */
     public function connect()
     {
-        if (!$this->connection) {
+        if (! $this->connection) {
+            var_dump(Di::getDefault()); die();
             $this->connection = Di::getDefault()->get($this->diServiceKey);
         }
         return true;
@@ -103,7 +105,7 @@ class Db // extends Beanstalk
      */
     public function put($data, array $options = null)
     {
-        if (!$options) {
+        if (! $options) {
             $options = [];
         }
 
@@ -116,7 +118,7 @@ class Db // extends Beanstalk
             'tube' => $this->using,
         ]);
 
-        $job   = new JobModel();
+        $job = new JobModel();
         $job->assign($payload);
         if ($job->save()) {
             return (int) $job->id;
@@ -129,7 +131,9 @@ class Db // extends Beanstalk
     protected function simpleReserve()
     {
         if ($job = $this->peekReady()) {
-            $job->getModel()->assign(['reserved' => 1]);
+            $job->getModel()->assign([
+                'reserved' => 1,
+            ]);
             $job->getModel()->update();
             return $job;
         } else {
@@ -147,13 +151,13 @@ class Db // extends Beanstalk
     {
         //we only need to calculate the ending time if there's a timeout requirement
         $willPool = $timeout !== 0;
-        $timeout  = $timeout?: PHP_INT_MAX;
-        $end      = time() + $timeout;
-        $udelay   = $delay * 1000;
+        $timeout = $timeout ?: PHP_INT_MAX;
+        $end = time() + $timeout;
+        $udelay = $delay * 1000;
 
         //while we got no job and there's need to pool and we haven't timed out, sleep and try to get a new job
-        while (!($job = $this->simpleReserve()) && $willPool && time() + $delay <= $end) {
-            usleep($udelay*1000);
+        while (! ($job = $this->simpleReserve()) && $willPool && time() + $delay <= $end) {
+            usleep($udelay * 1000);
         }
 
         //got it! return
@@ -180,10 +184,10 @@ class Db // extends Beanstalk
      */
     public function process(callable $worker, $delay = 1, $limit = null, $timeout = null)
     {
-        $limit = $limit?: PHP_INT_MAX;
+        $limit = $limit ?: PHP_INT_MAX;
 
         $processed = 0;
-        $stats     = [
+        $stats = [
             'success' => 0,
             'failure' => 0,
             'skipped' => 0,
@@ -313,56 +317,60 @@ class Db // extends Beanstalk
                 'COUNT(*) AS total',
                 Job::ST_BURIED,
                 Job::ST_RESERVED,
-                'priority < :mid_priority: AS '.Job::ST_URGENT,
-                'delay >= :now: AS '.Job::ST_DELAYED,
+                'priority < :mid_priority: AS ' . Job::ST_URGENT,
+                'delay >= :now: AS ' . Job::ST_DELAYED,
             ])
             ->bind([
                 'mid_priority' => Job::PRIORITY_MEDIUM,
-                'now'          => time(),
+                'now' => time(),
             ])
             ->groupBy(['tube', Job::ST_BURIED, Job::ST_RESERVED, Job::ST_URGENT, Job::ST_DELAYED])
             ->orderBy('tube');
 
         if ($filterTube) {
-            $query->where('tube = :tube:', ['tube' => $filterTube]);
+            $query->where('tube = :tube:', [
+                'tube' => $filterTube,
+            ]);
         }
 
         $result = $query->execute();
 
         $structure = function ($name) {
             return [
-                Job::ST_BURIED   => 0,
-                Job::ST_DELAYED  => 0,
-                'name'           => $name,
-                Job::ST_READY    => 0,
+                Job::ST_BURIED => 0,
+                Job::ST_DELAYED => 0,
+                'name' => $name,
+                Job::ST_READY => 0,
                 Job::ST_RESERVED => 0,
-                'total'          => 0,
-                Job::ST_URGENT   => 0,
+                'total' => 0,
+                Job::ST_URGENT => 0,
             ];
         };
 
         if ($filterTube) {
-            $stats = ($filterTube == $this->using) ? [$this->using => $structure($this->using)] : [];
+            $stats = ($filterTube == $this->using) ? [
+                $this->using => $structure($this->using),
+            ] : [];
         } else {
             $stats = [
-                'all'        => $structure('all'),
+                'all' => $structure('all'),
                 $this->using => $structure($this->using),
             ];
         }
         foreach ($result->toArray() as $entry) {
-            $tube  = $entry['tube'];
+            $tube = $entry['tube'];
             $total = $entry['total'];
             unset($entry['total'], $entry['tube']);
 
-            if (!array_key_exists($tube, $stats)) {
+            if (! array_key_exists($tube, $stats)) {
                 $stats[$tube] = $structure($tube);
             }
 
-            $entry  = array_filter($entry); //leaves only the status that has a value
+            $entry = array_filter($entry); //leaves only the status that has a value
             $status = $entry ? array_keys($entry)[0] : Job::ST_READY; //if there's no key, it's the count for ready jobs
             $stats[$tube][$status] += $total;
             $stats[$tube]['total'] += $total;
-            if (!$filterTube) {
+            if (! $filterTube) {
                 $stats['all'][$status] += $total;
                 $stats['all']['total'] += $total;
             }
@@ -415,7 +423,6 @@ class Db // extends Beanstalk
         } else {
             return false;
         }
-
     }
 
     /**
@@ -430,8 +437,10 @@ class Db // extends Beanstalk
 
         $job = JobModel::findFirst([
             'conditions' => implode(' AND ', $conditions),
-            'bind'       => array_merge(['tubes' => $this->watching], $bind),
-            'order'      => 'priority ASC, id ASC',
+            'bind' => array_merge([
+                'tubes' => $this->watching,
+            ], $bind),
+            'order' => 'priority ASC, id ASC',
             'for_update' => true,
         ]);
 
@@ -444,7 +453,9 @@ class Db // extends Beanstalk
      */
     public function peekReady()
     {
-        return $this->queriedPeek(['delay <= :now:', 'reserved = 0', 'buried = 0'], ['now' => time()]);
+        return $this->queriedPeek(['delay <= :now:', 'reserved = 0', 'buried = 0'], [
+            'now' => time(),
+        ]);
     }
 
     /**
@@ -462,7 +473,9 @@ class Db // extends Beanstalk
      */
     public function peekDelayed()
     {
-        return $this->queriedPeek(['delay > :now:', 'reserved = 0'], ['now' => time()]);
+        return $this->queriedPeek(['delay > :now:', 'reserved = 0'], [
+            'now' => time(),
+        ]);
     }
 
     /**
@@ -481,8 +494,10 @@ class Db // extends Beanstalk
             ->orderBy('id DESC')
             ->limit($number)
             ->execute();
-        $total   = sizeof($entries);
-        $updated = $entries->update(['buried' => 0]);
+        $total = sizeof($entries);
+        $updated = $entries->update([
+            'buried' => 0,
+        ]);
 
         return $updated ? $total : false;
     }

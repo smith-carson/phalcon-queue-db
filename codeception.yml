@@ -16,8 +16,8 @@ modules:
     config:
         Db:
             dsn: 'sqlite:tests/_data/base.db'
-            user: null
-            password: null
+            user: "marcelo"
+            password: "marcelo"
             populate: true
             cleanup: true
             dump: tests/_data/dump.sql

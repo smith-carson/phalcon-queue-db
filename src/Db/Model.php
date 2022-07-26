@@ -1,4 +1,6 @@
-<?php namespace Phalcon\Queue\Db;
+<?php
+
+namespace Phalcon\Queue\Db;
 
 /**
  * @todo why do we need to set default values here? Aren't the database defaults enough for Phalcon?

@@ -1,6 +1,6 @@
-<?php namespace Phalcon\Queue\Db\Job;
+<?php
 
-use Phalcon\Text;
+namespace Phalcon\Queue\Db\Job;
 
 /**
  * Helper class for Job stats, accessible both through array brackets or object inference.

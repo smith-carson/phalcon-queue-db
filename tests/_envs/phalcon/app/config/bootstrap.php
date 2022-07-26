@@ -1,4 +1,5 @@
 <?php
+
 use Phalcon\Config\Adapter\Php as Config;
 use Phalcon\Di\FactoryDefault as DefaultDi;
 use Phalcon\Mvc\Application;

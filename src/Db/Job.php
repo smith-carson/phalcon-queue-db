@@ -1,4 +1,6 @@
-<?php namespace Phalcon\Queue\Db;
+<?php
+
+namespace Phalcon\Queue\Db;
 
 use Phalcon\Queue\Db;
 use Phalcon\Queue\Db\Job\Stats;
@@ -36,17 +38,25 @@ class Job // extends \Phalcon\Queue\Beanstalk\Job
      */
     protected $deleted = false;
 
-    const PRIORITY_HIGHEST = 0;
-    const PRIORITY_MEDIUM  = 2147483648; // 2^31
-    const PRIORITY_LOWEST  = 4294967295; // 2^32 -1
-    const PRIORITY_DEFAULT = Db::DEFAULT_PRIORITY;
+    public const PRIORITY_HIGHEST = 0;
 
-    const ST_BURIED   = 'buried';
-    const ST_READY    = 'ready';
-    const ST_DELAYED  = 'delayed';
-    const ST_RESERVED = 'reserved';
-    const ST_URGENT   = 'urgent';
-    const ST_DELETED  = 'deleted';
+    public const PRIORITY_MEDIUM = 2147483648; // 2^31
+
+    public const PRIORITY_LOWEST = 4294967295; // 2^32 -1
+
+    public const PRIORITY_DEFAULT = Db::DEFAULT_PRIORITY;
+
+    public const ST_BURIED = 'buried';
+
+    public const ST_READY = 'ready';
+
+    public const ST_DELAYED = 'delayed';
+
+    public const ST_RESERVED = 'reserved';
+
+    public const ST_URGENT = 'urgent';
+
+    public const ST_DELETED = 'deleted';
 
     public function __construct(Db $queue, JobModel $model)
     {
@@ -115,7 +125,7 @@ class Job // extends \Phalcon\Queue\Beanstalk\Job
     {
         $data = [
             'reserved' => 0,
-            'delay'    => ($delay > 0) ? time() + $delay : 0,
+            'delay' => ($delay > 0) ? time() + $delay : 0,
         ];
         if ($priority) {
             $data['priority'] = $priority;
@@ -128,7 +138,7 @@ class Job // extends \Phalcon\Queue\Beanstalk\Job
     public function bury($priority = null)
     {
         $data = [
-            'buried'   => 1,
+            'buried' => 1,
             'reserved' => 0,
         ];
         if ($priority) {
@@ -149,13 +159,17 @@ class Job // extends \Phalcon\Queue\Beanstalk\Job
     {
         $payload = [];
         switch ($this->getState()) {
-            case self::ST_BURIED: $payload  = ['buried' => 0]; break;
-            case self::ST_DELAYED: $payload = ['delay' => 0]; break; //FIXME: missing tests for kicking a delayed job!
+            case self::ST_BURIED: $payload = [
+                'buried' => 0,
+            ]; break;
+            case self::ST_DELAYED: $payload = [
+                'delay' => 0,
+            ]; break; //FIXME: missing tests for kicking a delayed job!
         }
 
         if ($payload) {
             $this->model->assign($payload);
-           return $this->model->update();
+            return $this->model->update();
         } else {
             return true;
         }
@@ -172,13 +186,13 @@ class Job // extends \Phalcon\Queue\Beanstalk\Job
         $model = $this->model;
         $delay = $model->delay - time();
         return new Stats([
-            'id'            => $this->getId(),
-            'age'           => time() - $model->created_at,
-            'state'         => $this->getState(),
-            'tube'          => $model->tube,
-            'delay'         => ($delay > 0) ? $delay : 0,
+            'id' => $this->getId(),
+            'age' => time() - $model->created_at,
+            'state' => $this->getState(),
+            'tube' => $model->tube,
+            'delay' => ($delay > 0) ? $delay : 0,
             'delayed_until' => (int) $model->delay,
-            'priority'      => (int) $model->priority,
+            'priority' => (int) $model->priority,
             'priority_text' => $model->priorityText(),
         ]);
     }

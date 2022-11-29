@@ -181,6 +181,9 @@ class Db extends Beanstalk
                 $job->bury();
                 ++$stats['failure'];
             }
+            if ($this->connection->isUnderTransaction()) {
+                $this->connection->commit();
+            }
         }
 
         return $stats;
